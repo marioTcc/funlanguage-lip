@@ -64,7 +64,7 @@ let rec getConstraints t = match t with
                          [(fst (getConstraints b2), TBool)]@
                          (snd(getConstraints b1))@
                          (snd(getConstraints b2))@[] ))
-  | Not(b) -> (TBool, ( snd(getConstraints b)@[] ));; (* non funge *)
+  | Not(b) -> (TBool, ( snd(getConstraints b)@[] )) ;;
 
 
 (* Risolve i vincoli *)
@@ -74,12 +74,16 @@ let rec solveConstraints (constrs:(etype*etype) list) = match constrs with
       if fst hd = snd hd then solveConstraints tl else false(* Verifica se la coppia è fatta di termini uguali, se si la elimina *)
 ;; (* Ne mancano parecchie TODO *)
 
-
+(* Test funzionamento, da aggiungere altri, da rimuovere poi !!!! TODO *)
+let expr = Sum(Eint(2), True);;
+let expr2 = Sum(Eint(2), Eint(3));;
+solveConstraints (snd (getConstraints expr) );;
+solveConstraints (snd (getConstraints expr2) );;
 
 (* Aloritmo di sostituzione *)
 let subst newval oldval constrs = match constrs with
     [] -> []
-  | hd::tl -> [];;
+  | hd::tl -> if fst hd = oldval then [(newva    , newval
 
         
                                         
