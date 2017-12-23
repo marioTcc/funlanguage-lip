@@ -49,7 +49,7 @@ and env = ide -> eval;;
 (* !!!!!!!!!!! Ne mancano parecchi TODO !!!!!!!!! *)
 let rec getConstraints t = match t with
 (* TODO qui ci va Val(x:ide) tale che <<x,type>> --> (type(x),vuoto) ovvero si chiede il tipo all' ambiente dei tipi *)
-(* Inferenza per char ma non so cme si fa TODO*)
+(* Inferenza per char ma non so come si fa (per ora) TODO*)
 (* Inferenza per numerici *)
     Eint(x) -> (TInt, [])
   | Sum(t1,t2) | Diff(t1,t2) | Times(t1,t2) -> (TInt, 
@@ -67,23 +67,39 @@ let rec getConstraints t = match t with
   | Not(b) -> (TBool, ( snd(getConstraints b)@[] ));; (* non funge *)
 
 
-(* Risolve i vincoli *)
+(* Risolve i vincoli (algoritmo di unificazione)TODO rimuovere forzatura *)
 let rec solveConstraints (constrs:(etype*etype) list) = match constrs with
     [] -> true
   | hd::tl ->
-      if fst hd = snd hd then solveConstraints tl else false(* Verifica se la coppia è fatta di termini uguali, se si la elimina *)
-;; (* Ne mancano parecchie TODO *)
+      if fst hd = snd hd then solveConstraints tl else(* Verifica se la coppia è fatta di termini uguali, se si la elimina *)
+        if not (isContainedInExpr (fst hd) (snd hd)) then  
+(* Ne mancano parecchie TODO *)
+
+(* Verifica (true) se il termine name compare in expr, false altrimenti *)
+let rec isContainedInExpr expr name = match expr with
+    TBool | TInt -> false
+  | TVar value -> value = name
+  | TPair(t1,t2) | TFun (t1,t2) -> (isContainedInExpr t1 name) || (isContainedInExpr t2 name)
+ (* | TList l -> serve? è giusto? TODO *);;
 
 
+(* Algoritmo di sostituzione *)
+let rec subst newVal oldVal constrs = 
+  let rec substValue newVal oldVal expr = match expr with
+      TBool | TInt -> expr
+    | TVar value -> if value = oldVal then newVal else TVar oldVal
+    | TPair(t1,t2) -> TPair(substValue newVal oldVal t1, substValue newVal oldVal t2)
+    | TFun(t1,t2) -> TFun(substValue newVal oldVal t1, substValue newVal oldVal t2)
+(* serve list? boh *)
 
-(* Aloritmo di sostituzione *)
-let subst newval oldval constrs = match constrs with
-    [] -> []
-  | hd::tl -> [];;
-
-        
-                                        
+  in List.fold_right (fun x acc -> (substValue newVal oldVal (fst x), substValue newVal oldVal (snd x))::acc) 
+                                constrs [];;
   
+
+
+let g = 0;;     
+                                        
+
 
 
 
