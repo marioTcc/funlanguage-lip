@@ -47,7 +47,7 @@ and env = ide -> eval;;
 
 (* Genera una coppia (tipo espressione, lista di vincoli) *)
 (* !!!!!!!!!!! Ne mancano parecchi TODO !!!!!!!!! *)
-let rec getConstraints t = match t with
+let rec getConstraints expr = match expr with
 (* TODO qui ci va Val(x:ide) tale che <<x,type>> --> (type(x),vuoto) ovvero si chiede il tipo all' ambiente dei tipi *)
 (* Inferenza per char ma non so come si fa (per ora) TODO*)
 (* Inferenza per numerici *)
@@ -70,24 +70,30 @@ let rec getConstraints t = match t with
 (* Risolve i vincoli (algoritmo di unificazione)TODO rimuovere forzatura *)
 let rec solveConstraints (constrs:(etype*etype) list) = match constrs with
     [] -> true
-  | hd::tl ->
-      if fst hd = snd hd then solveConstraints tl else(* Verifica se la coppia è fatta di termini uguali, se si la elimina *)
-        if not (isContainedInExpr (fst hd) (snd hd)) then  
+  | hd::tl -> (* Verifica se la coppia è fatta di termini uguali, se si la elimina *)
+      if fst hd = snd hd  then solveConstraints tl 
+      else
+        (* Se fst hd è una variabile e non è contenuta nell'espressione snd hd, allora applica sostituzione *)
+        if (match fst hd with TVar name -> true | _ -> false) && not (isContainedInExpr (getVarName (fst hd))  (snd hd)) 
+        then solveConstraints (subst (snd hd) (getVarName (fst hd)) constrs)  
+        else false;; 
+          
 (* Ne mancano parecchie TODO *)
 
-(* Verifica (true) se il termine name compare in expr, false altrimenti *)
-let rec isContainedInExpr expr name = match expr with
-    TBool | TInt -> false
-  | TVar value -> value = name
-  | TPair(t1,t2) | TFun (t1,t2) -> (isContainedInExpr t1 name) || (isContainedInExpr t2 name)
- (* | TList l -> serve? è giusto? TODO *);;
+let getVarName var = match var with TVar name -> name | _ -> failwith "Not a var";;
 
+(* Verifica (true) se la variabile di tipo di nome name compare in expr, false altrimenti *)
+let rec isContainedInExpr name expr = match expr with
+    TBool | TInt -> false
+  | TVar n -> n = name
+  | TPair(t1,t2) | TFun (t1,t2) -> (isContainedInExpr name t1) || (isContainedInExpr name t2)
+ (* | TList l -> serve? è giusto? TODO *);;
 
 (* Algoritmo di sostituzione *)
 let rec subst newVal oldVal constrs = 
   let rec substValue newVal oldVal expr = match expr with
       TBool | TInt -> expr
-    | TVar value -> if value = oldVal then newVal else TVar oldVal
+    | TVar value -> if value = oldVal then newVal else TVar value
     | TPair(t1,t2) -> TPair(substValue newVal oldVal t1, substValue newVal oldVal t2)
     | TFun(t1,t2) -> TFun(substValue newVal oldVal t1, substValue newVal oldVal t2)
 (* serve list? boh *)
@@ -97,134 +103,3 @@ let rec subst newVal oldVal constrs =
   
 
 
-let g = 0;;     
-                                        
-
-
-
-
-
-
-
-(* !!! Da qui in poi è tutto da rivedere !!! TODO*)
-
-(*funzione per inferire il tipo delle variabili date  
-let rec typeinf expr = match expr with 
-    Val expr -> 
-  | Eint of int 
-  | Echar of char ->
-  | True -> TBool
-  | False  TBool
-  | Empty 
-  | Sum (exp * exp) 
-  | Diff of (exp * exp) ->
-  | Times of (exp * exp) 
-  | And of (exp * exp) ->
-  | Or of (exp * exp) 
-  | Not of exp ->
-  | Eq of (exp * exp) ->  
-  | Less of (exp * exp) 
-  | Cons of (exp * exp) ->
-  | Head of exp ->
-  | Tail of exp 
-  | Fst of exp ->
-  | Snd of exp ->
-  | Pair of (exp * exp) 
-  | Ifthenelse of (exp * exp * exp) -> 
-  | Let of (ide * exp * exp) ->
-  | Fun of (ide * exp) 
-  | Appl of (exp * exp) ->  (*non è sbagliato si fa così
-  | Rec of (ide * exp);;
-
-funzioni per prima parte ancora da inserire nel codice
-
-let rec variableFinder (var, env) =
-  match env with
-    [] -> failwith "Valore non trovato"
-    |(name, value) :: envTl -> 
-                   if name = var then value else variableFinder (var,envTl);;
-
-
-let typeinf (tipo,value) =
-  match tipo with
-      "int" -> (match value with
-                    Int(x) -> true
-                  | _ -> false)
-    | "bool" -> (match value with
-                    Bool(x) -> true
-                  | _ -> false)
-    | "char" -> (match value with 
-                     Char(x) -> true
-                  | _ -> false)
-    | _ -> failwith ("Invalid type")
-
-let eq (x,y) =
-    if typeinf("int",x) && typeinf("int",y) then (
-        match (x,y) with
-              (Int(u), Int(w)) -> Bool(u = w)
-            | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error")
-
-let less (x,y) =
-    if typeinf("int",x) && typeinf("int",y) then (
-        match (x,y) with
-              (Int(u), Int(w)) -> Bool(u < w)
-            | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error")
-
-let sum (x,y) =
-    if typeinf("int",x) && typeinf("int",y) then (
-        match (x,y) with
-              (Int(u), Int(w)) -> Int(u+w)
-            | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error")
-
-let diff (x,y) =
-    if typeinf("int",x) && typeinf("int",y) then (
-        match (x,y) with
-              (Int(u), Int(w)) -> Int(u-w)
-            | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error")
-
-let times (x,y) =
-    if typeinf("int",x) && typeinf("int",y) then (
-        match (x,y) with
-              (Int(u), Int(w)) -> Int(u*w)
-            | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error")
-
-let logicAnd (x,y) =
-    if typeinf("bool",x) && typeinf("bool",y) then (
-        match (x,y) with
-              (Bool(u), Bool(w)) -> Bool(u && w)
-            | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error")
-
-let logicOr (x,y) =
-    if typeinf("bool",x) && typeinf("bool",y) then (
-        match (x,y) with
-              (Bool(u), Bool(w)) -> Bool(u || w)
-            | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error")
-
-let unaryNegation x =
-    if typeinf("bool",x) then (
-        match x with
-              Bool(y) -> Bool(not y)
-            | (_) -> failwith ("Invalid type") )
-    else failwith ("Type error");;
-
-let cons (x,y) = 
-   (*quando sarà finita bisognerà aggiungere l' if per
-     il typeinf sull'head ed il tail della lista *)
-      x::y;;
-
-let rec sem (e: exp) =
-    match e with
-        Sum (a,b) -> sum ( sem (a), sem (b));;
-
-sem (2+3);;*)
-
-
-
-*)
