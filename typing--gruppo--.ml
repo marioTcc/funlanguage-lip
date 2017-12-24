@@ -66,28 +66,12 @@ let rec getConstraints expr = match expr with
                          (snd(getConstraints b2))@[] ))
   | Not(b) -> (TBool, ( snd(getConstraints b)@[] ));; (* non funge *)
 
-
-(* Risolve i vincoli (algoritmo di unificazione)TODO rimuovere forzatura *)
-let rec solveConstraints (constrs:(etype*etype) list) = match constrs with
-    [] -> true
-  | hd::tl -> (* Verifica se la coppia è fatta di termini uguali, se si la elimina *)
-      if fst hd = snd hd  then solveConstraints tl 
-      else
-        (* Se fst hd è una variabile e non è contenuta nell'espressione snd hd, allora applica sostituzione *)
-        if (match fst hd with TVar name -> true | _ -> false) && not (isContainedInExpr (getVarName (fst hd))  (snd hd)) 
-        then solveConstraints (subst (snd hd) (getVarName (fst hd)) constrs)  
-        else false;; 
-          
-(* Ne mancano parecchie TODO *)
-
-let getVarName var = match var with TVar name -> name | _ -> failwith "Not a var";;
-
 (* Verifica (true) se la variabile di tipo di nome name compare in expr, false altrimenti *)
 let rec isContainedInExpr name expr = match expr with
     TBool | TInt -> false
   | TVar n -> n = name
   | TPair(t1,t2) | TFun (t1,t2) -> (isContainedInExpr name t1) || (isContainedInExpr name t2)
- (* | TList l -> serve? è giusto? TODO *);;
+ (* | TList l -> serve? è giusto? TODO *);;
 
 (* Algoritmo di sostituzione *)
 let rec subst newVal oldVal constrs = 
@@ -102,4 +86,24 @@ let rec subst newVal oldVal constrs =
                                 constrs [];;
   
 
-
+(* Risolve i vincoli (entry point dell'algoritmo di unificazione)TODO rimuovere forzatura *)
+(* !!! Per il momendo restituisce true se l'espressione è inferenziabile false (invece che esplodere
+   se non lo è, da modificare con eccezioni poi TODO !!! *)
+let rec solveConstraints (constrs:(etype*etype) list) = match constrs with
+    [] -> true
+  | hd::tl -> match fst hd, snd hd with
+        (* Regola 2 *)
+        (TVar name, _) -> if not (isContainedInExpr name (snd hd)) (* Se il lato sinistro è una variabile che non compare a destra *)
+                          then solveConstraints (subst (snd hd) name constrs)
+                          else false (* TODO implementare eccezione *)
+      | (_, TVar name) -> if not (isContainedInExpr name (fst hd)) (* Se il lato destro è una variabile che non compare a sinistra *)
+                          then solveConstraints (subst (fst hd) name constrs )
+                          else false
+        (* Regola 3 *)
+        (* le condizioni si possono unificare ma emacs rompe i coglioni TODO *)
+      | (TFun(a,b), TFun(c,d)) -> solveConstraints ((a,c)::(b,d)::tl)
+      | (TPair(a,b),TPair(c,d)) -> solveConstraints ((a,c)::(b,c)::tl)
+     (* oh ma sta cazzo di lista serve o no?  | (TList a, TList b) -> solveConstraints ((a,b)::tl) *)
+        (* Regola 1 *)
+      | (TInt,TInt) | (TBool,TBool) -> solveConstraints tl
+      | _ -> false;;
