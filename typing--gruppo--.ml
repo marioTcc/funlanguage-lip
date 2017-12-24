@@ -39,10 +39,6 @@ type exp =
   | Appl of exp * exp (*sbagliato da Pinna*)
   | Rec of ide * exp;;
 
-(* Tipi per la valutazione del valore delle espressioni *)
-type eval = Undefined | Int of int | Bool of bool | Char of char | List of eval list | Pair of eval*eval | Closure of exp*env
-(* Tipo dell'ambiente di esecuzione *)
-and env = ide -> eval;;
 (* TODO Definizione ambiente per i tipi *)
 
 (* Genera una coppia (tipo espressione, lista di vincoli) *)
@@ -64,7 +60,12 @@ let rec getConstraints expr = match expr with
                          [(fst (getConstraints b2), TBool)]@
                          (snd(getConstraints b1))@
                          (snd(getConstraints b2))@[] ))
-  | Not(b) -> (TBool, ( snd(getConstraints b)@[] ));; (* non funge *)
+  | Not(b) -> (TBool, ( [fst(getConstraints b), TBool]@
+                          (snd(getConstraints b))@[] ))
+  | Less(expr1,expr2) -> (TBool, ([(fst (getConstraints expr1), TInt)]@
+                                  [(fst (getConstraints expr2), TInt)]@
+                                  (snd(getConstraints expr1))@
+                                  (snd(getConstraints expr2))@[]));;
 
 (* Verifica (true) se la variabile di tipo di nome name compare in expr, false altrimenti *)
 let rec isContainedInExpr name expr = match expr with
@@ -86,10 +87,10 @@ let rec subst newVal oldVal constrs =
                                 constrs [];;
   
 
-(* Risolve i vincoli (entry point dell'algoritmo di unificazione)TODO rimuovere forzatura *)
+(* Risolve i vincoli (entry point dell'algoritmo di unificazione) *)
 (* !!! Per il momendo restituisce true se l'espressione è inferenziabile false (invece che esplodere
    se non lo è, da modificare con eccezioni poi TODO !!! *)
-let rec solveConstraints (constrs:(etype*etype) list) = match constrs with
+let rec solveConstraints constrs = match constrs with
     [] -> true
   | hd::tl -> match fst hd, snd hd with
         (* Regola 2 *)
