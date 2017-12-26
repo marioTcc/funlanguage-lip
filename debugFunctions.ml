@@ -1,27 +1,36 @@
 #use "typing--gruppo--.ml";;
 
 
-(* Test per inferenza dei tipi *)
-let testaInferenza assertExp expected =
-  (solveConstraints (snd (getConstraints assertExp))) = expected;;
-
-(* Input: espressione, valore atteso di valutazione (true andata a buon fine, false errore) *) 
+(* Input: espressione
+   Output: il tipo di exp se andata a buon fine, scoppia se errore *) 
 (* Asserts per Sum *)
-testaInferenza (Sum(Eint(2), True)) false;;
-testaInferenza (Sum(Eint(2), Eint(3))) true;;
-testaInferenza (Sum(Eint(4),And(False,True))) false;;
+typeinf (Sum(Eint(2), True));;
+typeinf (Sum(Eint(2), Eint(3)));;
+typeinf (Sum(Eint(4),And(False,True)));;
 (* Asserts per Times *)
-testaInferenza (Times(Eint(3),False)) false;;
-testaInferenza (Times(Eint(3), Eint(6))) true;;
+typeinf (Times(Eint(3),False));;
+typeinf (Times(Eint(3), Eint(6)));;
 (* Asserts per And *)
-testaInferenza (And(True, False)) true;;
-testaInferenza (And(Eint 2, True)) false;;
+typeinf (And(True, False));;
+typeinf (And(Eint 2, True));;
 (* Asserts per Not *)
-testaInferenza (Not(True)) true;;
-testaInferenza (Not(Eint 1)) false;; (*[è sbagliato, perchè?] non è più sbagliata, perchè? TODO *)
-testaInferenza (Not(And(True,False))) true;;
-testaInferenza (Not(And(Eint 2, True))) false;;
+typeinf (Not(True));;
+typeinf (Not(Eint 1));;
+typeinf (Not(And(True,False)));;
+typeinf (Not(And(Eint 2, True)));;
 (* Asserts per Less *)
-testaInferenza (And(Less(Eint 3, Eint 2),True)) true;;
-testaInferenza (And(Less(True, Eint 3),False)) false;;
+typeinf (Less(And(True,False),Eint 3));;
+typeinf (Less(Sum(Eint 3, Eint 2),Times(Eint 2, Eint 1)));;
+typeinf (Less(Sum(Eint 3, True),Times(True,False)));;
+typeinf (And(Less(Eint 3, Eint 2),True));;
+typeinf (And(Less(True, Eint 3),False));;
+(* Assert per Eq *)
+typeinf (Eq(Eint 2, Eint 3));;
+typeinf (Eq(True, False));;
+typeinf (Eq(True, Eint 1));; (* non va *)
+typeinf (Eq(False, Eint 2));; (* non va *)
+(* Assert per Pair *)
+typeinf (Pair(Eint 2, True));;
+typeinf (Pair(True,False));;
+typeinf (Pair(Eint 2, Eint 3));;
 (* TODO testare tutto il resto *)
