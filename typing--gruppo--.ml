@@ -47,7 +47,7 @@ let rec isContainedInExpr name expr = match expr with
     TBool | TInt -> false
   | TVar n -> n = name
   | TPair(t1,t2) | TFun (t1,t2) -> (isContainedInExpr name t1) || (isContainedInExpr name t2)
- (* | TList(TVar t) -> name = t*);;
+(*  | TList (t) -> match t with (TVar x)list -> name *);;
 
 (* Algoritmo di sostituzione *)
 let rec subst newVal oldVal constrs = 
@@ -62,7 +62,6 @@ in List.fold_right (fun x acc -> (substValue newVal oldVal (fst x), substValue n
   
 
 
-let rec typeinf expr = 
 (* Genera una coppia (tipo espressione, lista di vincoli) *)
 (* !!!!!!!!!!! Ne mancano parecchi TODO !!!!!!!!! *)
 (* !!! ÅË pesantissimo, serve ottimizzarlo? !!! *)
@@ -100,7 +99,8 @@ let rec getConstraints expr = match expr with
         in (TBool, ([(t1Type, t1Type)]@
                     [(t2Type, t2Type)]@
                     (t1Constrs)@
-                    (t2Constrs))) 
+                    (t2Constrs)))
+(* Inferenza per il tipo coppia *)
   | Pair(t1,t2) -> 
       let ((t1Type,t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1,getConstraints t2)
         in ( TPair(t1Type,t2Type),([(t1Type,t1Type)]@
@@ -115,14 +115,24 @@ let rec getConstraints expr = match expr with
       let (TPair(typeL, typeR),tConstrs) = getConstraints t
         in (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
                      (tConstrs)))
+(* Inferenza per il tipo lista *)
+(* !!! TODO !!! *)
+(* Inferenza per if-then-else *)
+  | Ifthenelse(b,t1,t2) ->
+      let ((bType,bConstrs),(t1Type,t1Constrs),(t2Type,t2Constrs)) = (getConstraints b,getConstraints t1, getConstraints t2)
+        in  (t1Type, ([(bType,TBool)]@
+                      [(t1Type,t2Type)]@
+                      (bConstrs)@
+                      (t1Constrs)@
+                      (t2Constrs)))
 
 
-and
+;;
 
 (* Risolve i vincoli (entry point dell'algoritmo di unificazione) *)
 (* !!! Per il momendo restituisce true se l'espressione ÅË inferenziabile false (invece che esplodere
    se non lo ÅË, da modificare con eccezioni poi TODO !!! *)
-solveConstraints constrs = match constrs with
+let rec solveConstraints constrs = match constrs with
     [] -> true
   | hd::tl -> match fst hd, snd hd with
         (* Regola 2 *)
@@ -142,5 +152,5 @@ solveConstraints constrs = match constrs with
       | _ -> false
 
 (* Se il tipo ÅË inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
-in (if solveConstraints(snd( getConstraints expr) ) then (fst (getConstraints expr)) else failwith "Tipo non inferibile");;
+let rec typeinf expr = (if solveConstraints(snd( getConstraints expr) ) then (fst (getConstraints expr)) else failwith "Tipo non inferibile");;
 
