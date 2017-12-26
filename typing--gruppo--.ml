@@ -47,7 +47,7 @@ let rec isContainedInExpr name expr = match expr with
     TBool | TInt -> false
   | TVar n -> n = name
   | TPair(t1,t2) | TFun (t1,t2) -> (isContainedInExpr name t1) || (isContainedInExpr name t2)
- (* | TList l -> serve? è giusto? TODO *);;
+ (* | TList(TVar t) -> name = t*);;
 
 (* Algoritmo di sostituzione *)
 let rec subst newVal oldVal constrs = 
@@ -56,9 +56,8 @@ let rec subst newVal oldVal constrs =
     | TVar value -> if value = oldVal then newVal else TVar value
     | TPair(t1,t2) -> TPair(substValue newVal oldVal t1, substValue newVal oldVal t2)
     | TFun(t1,t2) -> TFun(substValue newVal oldVal t1, substValue newVal oldVal t2)
-(* serve list? boh *)
-
-  in List.fold_right (fun x acc -> (substValue newVal oldVal (fst x), substValue newVal oldVal (snd x))::acc) 
+  (*  | TList(t) -> if t = TVar oldVal then TList newVal else TList(t)*)
+in List.fold_right (fun x acc -> (substValue newVal oldVal (fst x), substValue newVal oldVal (snd x))::acc) 
                                 constrs [];;
   
 
@@ -72,34 +71,51 @@ let rec getConstraints expr = match expr with
 (* Inferenza per char ma non so come si fa (per ora) TODO*)
 (* Inferenza per numerici *)
     Eint(x) -> (TInt, [])
-  | Sum(t1,t2) | Diff(t1,t2) | Times(t1,t2) -> (TInt, 
-                   ( [(fst (getConstraints t1) ,TInt)]@
-                       [(fst (getConstraints t2),TInt)]@
-                       (snd(getConstraints t1))@
-                       (snd(getConstraints t2))@[]))
+  | Sum(t1,t2) | Diff(t1,t2) | Times(t1,t2) -> 
+      let ((t1Type, t1Constrs),(t2Type, t2Constrs)) = (getConstraints t1, getConstraints t2)
+            in (TInt, ([(t1Type,TInt)]@
+                       [(t2Type,TInt)]@
+                        (t1Constrs)@
+                        (t2Constrs)))
 (* Inferenza per booleani o per espressioni booleane *)
   | True | False -> (TBool, [])
-  | And(b1,b2) | Or(b1,b2) -> (TBool, 
-                   ( [(fst (getConstraints b1), TBool )]@
-                         [(fst (getConstraints b2), TBool)]@
-                         (snd(getConstraints b1))@
-                         (snd(getConstraints b2))@[] ))
-  | Not(b) -> (TBool, ( [fst(getConstraints b), TBool]@
-                          (snd(getConstraints b))@[] ))
-  | Less(t1,t2) -> (TBool, ([(fst (getConstraints t1), TInt)]@
-                                  [(fst (getConstraints t2), TInt)]@
-                                  (snd(getConstraints t1))@
-                                  (snd(getConstraints t2))@[]))
-  | Eq(t1,t2) -> (TBool, ( [(fst (getConstraints t1), typeinf t1)]@
-                             [(fst (getConstraints t2), typeinf t2)]@
-                             (snd(getConstraints t1))@
-                             (snd(getConstraints t2))@[])) (* !!! l'ha sbagliata pinna? al momento confronta fischi con fiaschi !!! *)
-  | Pair(t1,t2) -> ( TPair(typeinf t1,typeinf t2),([fst(getConstraints t1),typeinf t1]@
-                                                 [fst(getConstraints t2),typeinf t2]@
-                                                 (snd(getConstraints t1))@
-                                                 (snd(getConstraints t2))@[]))
- 
- 
+  | And(b1,b2) | Or(b1,b2) -> 
+      let ((b1Type,b1Constrs),(b2Type,b2Constrs)) = (getConstraints b1, getConstraints b2)
+        in(TBool, ([(b1Type,TBool)]@
+                   [(b2Type, TBool)]@
+                    (b1Constrs)@
+                    (b2Constrs)))
+  | Not(b) ->
+      let (bType,bConstrs) = getConstraints b
+        in (TBool, ([bType, TBool]@
+                    (bConstrs)))
+  | Less(t1,t2) ->
+      let ((t1Type,t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1, getConstraints t2)
+        in (TBool, ([(t1Type, TInt)]@
+                    [(t2Type, TInt)]@
+                    (t1Constrs)@
+                    (t2Constrs)))
+  | Eq(t1,t2) ->(* !!! l'ha sbagliata pinna? al momento confronta fischi con fiaschi !!! *)
+      let ((t1Type,t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1,getConstraints t2)
+        in (TBool, ([(t1Type, t1Type)]@
+                    [(t2Type, t2Type)]@
+                    (t1Constrs)@
+                    (t2Constrs))) 
+  | Pair(t1,t2) -> 
+      let ((t1Type,t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1,getConstraints t2)
+        in ( TPair(t1Type,t2Type),([(t1Type,t1Type)]@
+                                   [(t2Type,t2Type)]@
+                                    (t1Constrs)@
+                                    (t2Constrs)))
+  | Fst(t) ->
+      let (TPair(typeL, typeR),tConstrs) = getConstraints t
+        in (typeL, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
+                     (tConstrs)))
+  | Snd(t) ->
+      let (TPair(typeL, typeR),tConstrs) = getConstraints t
+        in (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
+                     (tConstrs)))
+
 
 and
 

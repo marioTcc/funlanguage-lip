@@ -4,9 +4,9 @@
 (* Input: espressione
    Output: il tipo di exp se andata a buon fine, scoppia se errore *) 
 (* Asserts per Sum *)
-typeinf (Sum(Eint(2), True));;
-typeinf (Sum(Eint(2), Eint(3)));;
-typeinf (Sum(Eint(4),And(False,True)));;
+typeinf (Sum(Eint(2), True));; (* Errore *)
+typeinf (Sum(Eint(2), Eint(3)));; (* TInt *)
+typeinf (Sum(Eint(4),And(False,True)));; (* Errore *)
 (* Asserts per Times *)
 typeinf (Times(Eint(3),False));;
 typeinf (Times(Eint(3), Eint(6)));;
@@ -33,4 +33,11 @@ typeinf (Eq(False, Eint 2));; (* non va *)
 typeinf (Pair(Eint 2, True));;
 typeinf (Pair(True,False));;
 typeinf (Pair(Eint 2, Eint 3));;
+typeinf (Pair(Pair (Eint 2, And(True,False)),True));;
+(* Assert per Fst *)
+typeinf (Sum(Fst(Pair(Eint 2,True)),Eint 4));;
+typeinf (Sum(Fst(Pair(True,False)),Eint 5));;
+(* Assert per Snd *)
+typeinf (Sum(Snd(Pair(True,Eint 2)),Eint 5));;
+
 (* TODO testare tutto il resto *)
