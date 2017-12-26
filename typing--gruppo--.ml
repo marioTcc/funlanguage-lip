@@ -47,7 +47,7 @@ let rec isContainedInExpr name expr = match expr with
     TBool | TInt -> false
   | TVar n -> n = name
   | TPair(t1,t2) | TFun (t1,t2) -> (isContainedInExpr name t1) || (isContainedInExpr name t2)
-(*  | TList (t) -> match t with (TVar x)list -> name *);;
+  | TList (t) -> TList t = (TList([TVar name]));;
 
 (* Algoritmo di sostituzione *)
 let rec subst newVal oldVal constrs = 
@@ -56,10 +56,13 @@ let rec subst newVal oldVal constrs =
     | TVar value -> if value = oldVal then newVal else TVar value
     | TPair(t1,t2) -> TPair(substValue newVal oldVal t1, substValue newVal oldVal t2)
     | TFun(t1,t2) -> TFun(substValue newVal oldVal t1, substValue newVal oldVal t2)
-  (*  | TList(t) -> if t = TVar oldVal then TList newVal else TList(t)*)
+    | TList(t) -> if t = [TVar(oldVal)] then TList [newVal] else TList(t)
 in List.fold_right (fun x acc -> (substValue newVal oldVal (fst x), substValue newVal oldVal (snd x))::acc) 
                                 constrs [];;
-  
+
+isContainedInExpr "?T7" (subst (TVar "?T7") 
+                           "?T3" 
+                           (TList([TVar "?T3"])));;
 
 
 (* Genera una coppia (tipo espressione, lista di vincoli) *)
