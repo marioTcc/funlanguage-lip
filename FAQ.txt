@@ -1,0 +1,12 @@
+
+
+	1) Come si implementa una lista se la lista non è un tipo di exp ?
+	2) La formula dell'uguaglianza  pag 3 è corretta ? potrebbe essere che manchi
+       il vincolo che forzi il tipo a sinistra dell'uguale ad essere uguale a quello
+       a destra dell'uguale
+	3) L'equivalente di List.hd deve restituire eccezione come la funzione di libreria ?
+		Cioè sem(Head([]) = Error -> Error oppure sem(Head([])) = []
+	4) La regola di inferenza per il not a pag 3 è corretta ? 
+	5) Può essere che manchi il tipo Echar per la valutazione di eq
+	6) Si può usare ai fini della modularità del progetto la funzione use per utilizzare
+	   qualcosa definito in un altro file ?
