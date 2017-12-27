@@ -135,7 +135,19 @@ let unaryNegation x =
 
 let pair (x,y) = Pair(x,y);;
 
+let cons a b = match b with
+    (List t) -> List (a::t)
+   |_ ->failwith"";;
 
+let head l = match l with
+    (*Per ora le gestisco col comportamento delle corrispondente *)
+    (List (hd::tl)) -> hd
+  | _ -> failwith "";;
+
+let tail l = match l with
+    (List (hd::tl)) -> List tl
+  | _ -> failwith "";;
+  
 (*Come si implementa una lista se la lista non è un tipo di exp ?*)
 (*la formula dell'uguaglianza  pag 3 è corretta ? potrebbe essere che manchi
   il vincolo che forzi il tipo a sinistra dell'uguale ad essere uguale a quello
@@ -156,6 +168,9 @@ let rec sem (e:exp) =
       | True -> Bool(true)
       | False -> Bool(false)
       | Empty -> List []
+      | Cons(a,b) -> cons (sem a) (sem b)
+      | Head a -> head (sem a) 
+      | Tail a -> tail  (sem a)
       | Pair(a,b) -> pair(sem(a),sem(b))
       | Fst(Pair(a,b)) -> sem(a)
       | Snd(Pair(a,b)) -> sem(b)
@@ -167,13 +182,10 @@ let rec sem (e:exp) =
       | Or(a,b) ->  logicOr( (sem a),(sem b) )
       | Less(a,b) -> less( sem(a),sem(b) )
       | Not(a) -> unaryNegation( (sem a) )
-      | Ifthenelse(a,b,c) -> 
-            let g = sem a in
-            if typeChecker("bool",g) then
-               (if g = Bool(true) 
-               then sem b
-               else sem c)
-            else failwith ("If expression is not of boolean type")
+      | Ifthenelse(a,b,c) ->  let g = sem a in if typeChecker("bool",g) then
+                                                 (if g = Bool(true) 
+                                                   then sem b else sem c)
+                           else failwith ("Condizione booleana non rispettata")
       | _ -> failwith "Command not recognized";;
 
 
@@ -200,5 +212,13 @@ let rec sem (e:exp) =
  sem(False);;
  sem(Empty);;
  sem(Fst(Pair( Sum(Eint 5,Eint 3) , Diff(Eint 5,Eint 3) )));;
-  sem(Snd(Pair( Sum(Eint 5,Eint 3) , Diff(Eint 5,Eint 3) )));;    
+ sem(Snd(Pair( Sum(Eint 5,Eint 3) , Diff(Eint 5,Eint 3) )));;    
  sem(Fst(Sum(Eint 2, Eint 3)));;
+ sem(Sum(Eint 2,Eint 3));;     
+ sem ((Cons(Eint 4,Cons(Eint 2,(Cons(Eint 1,Empty))))));;
+ sem ((Head(Cons(Eint 2,(Cons(Eint 1,Empty))))));;
+ sem ((Head(Cons(Eint 2,Empty))));;
+ sem(Head(Empty));;
+ sem ((Tail((Cons(Eint 3,Cons(Eint 2,(Cons(Eint 1,Empty))))))));;   
+ sem ((Tail(Cons(Eint 10,Empty))));;
+ sem (Tail(Empty));;    
