@@ -60,11 +60,6 @@ let rec subst newVal oldVal constrs =
 in List.fold_right (fun x acc -> (substValue newVal oldVal (fst x), substValue newVal oldVal (snd x))::acc) 
                                 constrs [];;
 
-isContainedInExpr "?T7" (subst (TVar "?T7") 
-                           "?T3" 
-                           (TList([TVar "?T3"])));;
-
-
 (* Genera una coppia (tipo espressione, lista di vincoli) *)
 (* !!!!!!!!!!! Ne mancano parecchi TODO !!!!!!!!! *)
 (* !!! ÅË pesantissimo, serve ottimizzarlo? !!! *)
@@ -118,7 +113,21 @@ let rec getConstraints expr = match expr with
       let (TPair(typeL, typeR),tConstrs) = getConstraints t
         in (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
                      (tConstrs)))
-(* Inferenza per il tipo lista *)
+(* Inferenza per il tipo lista !! potrebbe servire modificarli !!! TODO *)
+  | Head(l) -> 
+      let (lType, lConstraints) = getConstraints l 
+        in (lType, ([(TList [lType], TList [lType])]@lConstraints)) 
+  | Tail l -> (* non funge *)
+      let (lType,lConstraints) = getConstraints l
+        in (lType, (lConstraints))
+  | Cons(t1,t2) ->
+      let ((t1Type, t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1, getConstraints t2)
+        in (TList [t1Type], ([(t1Type,t1Type)]@
+                       [(t2Type, TList [t1Type])])@
+                       (t1Constrs)@
+                       (t2Constrs))
+             (* !!! TMP !!! TODO *)
+  | Empty -> (TList [TBool], [])
 (* !!! TODO !!! *)
 (* Inferenza per if-then-else *)
   | Ifthenelse(b,t1,t2) ->
@@ -128,9 +137,8 @@ let rec getConstraints expr = match expr with
                       (bConstrs)@
                       (t1Constrs)@
                       (t2Constrs)))
-
-
-;;
+(* Rompere solo in caso di incendio *)
+  | _ -> failwith "Tipo non inferibile";;
 
 (* Risolve i vincoli (entry point dell'algoritmo di unificazione) *)
 (* !!! Per il momendo restituisce true se l'espressione ÅË inferenziabile false (invece che esplodere
@@ -149,11 +157,10 @@ let rec solveConstraints constrs = match constrs with
         (* le condizioni si possono unificare ma emacs rompe i coglioni TODO *)
       | (TFun(a,b), TFun(c,d)) -> solveConstraints ((a,c)::(b,d)::tl)
       | (TPair(a,b),TPair(c,d)) -> solveConstraints ((a,c)::(b,d)::tl)
-     (* oh ma sta cazzo di lista serve o no?  | (TList a, TList b) -> solveConstraints ((a,b)::tl) *)
+      | (TList[a], TList[b]) -> solveConstraints ((a,b)::tl) 
         (* Regola 1 *)
       | (TInt,TInt) | (TBool,TBool) -> solveConstraints tl
       | _ -> false
 
 (* Se il tipo ÅË inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
 let rec typeinf expr = (if solveConstraints(snd( getConstraints expr) ) then (fst (getConstraints expr)) else failwith "Tipo non inferibile");;
-
