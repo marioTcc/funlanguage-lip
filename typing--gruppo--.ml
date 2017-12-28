@@ -137,14 +137,14 @@ let rec getConstraints expr = match expr with
   | Tail l -> (* non funge *)
       let (lType,lConstraints) = getConstraints l
         in (lType, (lConstraints))
-  | Cons(t1,t2) ->
+  | Cons(t1,t2) ->(* non funge *)
       let ((t1Type, t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1, getConstraints t2)
         in (TList [t1Type], ([(t1Type,t1Type)]@
                        [(t2Type, TList [t1Type])])@
                        (t1Constrs)@
                        (t2Constrs))
              (* !!! TMP !!! TODO *)
-  | Empty -> (TList [TBool], [])
+  | Empty -> (TList [TInt], [])
 (* !!! TODO !!! *)
 (* Inferenza per if-then-else *)
   | Ifthenelse(b,t1,t2) ->

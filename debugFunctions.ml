@@ -47,5 +47,6 @@ typeinf(Eq(Echar 'c', Echar 'd'));;
 typeinf(Eq(Echar 'c', Echar 'c'));;
 (* Assert per liste *)
 typeinf (Cons(Eint 1, Cons(Eint 2, Empty)));;
+typeinf (Cons(Eint 1, Empty));;
 typeinf Empty;;
 (* TODO testare tutto il resto *)
