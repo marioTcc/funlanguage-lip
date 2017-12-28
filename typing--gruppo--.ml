@@ -39,33 +39,48 @@ type exp =
   | Appl of exp * exp (*sbagliato da Pinna*)
   | Rec of ide * exp;;
 
+
+
 (* TODO Definizione ambiente per i tipi *)
+(* !!! TODO rivedere inferenza liste in generale !!! *)
+
 
 
 (* Verifica (true) se la variabile di tipo di nome name compare in expr, false altrimenti *)
 let rec isContainedInExpr name expr = match expr with
-    TBool | TInt -> false
+    TBool | TInt | TChar -> false
   | TVar n -> n = name
   | TPair(t1,t2) | TFun (t1,t2) -> (isContainedInExpr name t1) || (isContainedInExpr name t2)
-  | TList (t) -> TList t = (TList([TVar name]));;
+  | TList [t] -> match t with
+        TVar n -> n = name
+      | _ -> isContainedInExpr name t
+;;
+
 
 (* Algoritmo di sostituzione *)
 let rec subst newVal oldVal constrs = 
   let rec substValue newVal oldVal expr = match expr with
-      TBool | TInt -> expr
+      TBool | TInt | TChar -> expr
     | TVar value -> if value = oldVal then newVal else TVar value
     | TPair(t1,t2) -> TPair(substValue newVal oldVal t1, substValue newVal oldVal t2)
     | TFun(t1,t2) -> TFun(substValue newVal oldVal t1, substValue newVal oldVal t2)
-    | TList(t) -> if t = [TVar(oldVal)] then TList [newVal] else TList(t)
+    | TList [t] -> match t with
+          TVar oldVal -> TList [newVal]
+        | _ -> substValue newVal oldVal t
 in List.fold_right (fun x acc -> (substValue newVal oldVal (fst x), substValue newVal oldVal (snd x))::acc) 
                                 constrs [];;
+  
 
+
+
+
+let rec typeinf expr = 
 (* Genera una coppia (tipo espressione, lista di vincoli) *)
 (* !!!!!!!!!!! Ne mancano parecchi TODO !!!!!!!!! *)
-(* !!! ÅË pesantissimo, serve ottimizzarlo? !!! *)
 let rec getConstraints expr = match expr with
 (* TODO qui ci va Val(x:ide) tale che <<x,type>> --> (type(x),vuoto) ovvero si chiede il tipo all' ambiente dei tipi *)
-(* Inferenza per char ma non so come si fa (per ora) TODO*)
+(* Inferenza per caratteri *)
+    Echar c -> (TChar,[])
 (* Inferenza per numerici *)
     Eint(x) -> (TInt, [])
   | Sum(t1,t2) | Diff(t1,t2) | Times(t1,t2) -> 
@@ -157,10 +172,12 @@ let rec solveConstraints constrs = match constrs with
         (* le condizioni si possono unificare ma emacs rompe i coglioni TODO *)
       | (TFun(a,b), TFun(c,d)) -> solveConstraints ((a,c)::(b,d)::tl)
       | (TPair(a,b),TPair(c,d)) -> solveConstraints ((a,c)::(b,d)::tl)
-      | (TList[a], TList[b]) -> solveConstraints ((a,b)::tl) 
+      (*| (TList[a], TList[b]) -> solveConstraints ((a,b)::tl) *)
         (* Regola 1 *)
       | (TInt,TInt) | (TBool,TBool) -> solveConstraints tl
       | _ -> false
 
-(* Se il tipo ÅË inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
-let rec typeinf expr = (if solveConstraints(snd( getConstraints expr) ) then (fst (getConstraints expr)) else failwith "Tipo non inferibile");;
+(* Se il tipo Ë inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
+in let exprConstraints = getConstraints expr
+in (if solveConstraints ( snd exprConstraints ) then fst exprConstraints else failwith "Tipo non inferibile");;
+(* !!! TODO mancano varie cose delle liste !!! *)

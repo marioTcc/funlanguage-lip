@@ -27,8 +27,8 @@ typeinf (And(Less(True, Eint 3),False));;
 (* Assert per Eq *)
 typeinf (Eq(Eint 2, Eint 3));;
 typeinf (Eq(True, False));;
-typeinf (Eq(True, Eint 1));; (* non va *)
-typeinf (Eq(False, Eint 2));; (* non va *)
+typeinf (Eq(True, Eint 1));;
+typeinf (Eq(False, Eint 2));;
 (* Assert per Pair *)
 typeinf (Pair(Eint 2, True));;
 typeinf (Pair(True,False));;
@@ -39,8 +39,14 @@ typeinf (Sum(Fst(Pair(Eint 2,True)),Eint 4));;
 typeinf (Sum(Fst(Pair(True,False)),Eint 5));;
 (* Assert per Snd *)
 typeinf (Sum(Snd(Pair(True,Eint 2)),Eint 5));;
-(*Assert per Ifthenelse *)
-typeinf (Sum(Eint 2, Ifthenelse(True, Eint 2, False)));;
-typeinf (Sum(Eint 2, Ifthenelse(True, Eint 2, Eint 4)));;
-typeinf (Less(Eint 2, Ifthenelse(False, Eint 2, Eint 3)));;
+(* Assert per liste *)
+typeinf (Cons(Eint 1, Cons(Eint 2, Empty)));;
+typeinf Empty;;
+(* Assert generici *)
+typeinf(Echar 'c');;
+typeinf(Sum(Eint 2, Echar 'c'));;
+typeinf(Eq(Echar 'c', Eint 2));;
+typeinf(Eq(Echar 'c', Echar 'd'));;
+typeinf(Eq(Echar 'c', Echar 'c'));;
+
 (* TODO testare tutto il resto *)
