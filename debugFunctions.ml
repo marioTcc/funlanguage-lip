@@ -39,14 +39,13 @@ typeinf (Sum(Fst(Pair(Eint 2,True)),Eint 4));;
 typeinf (Sum(Fst(Pair(True,False)),Eint 5));;
 (* Assert per Snd *)
 typeinf (Sum(Snd(Pair(True,Eint 2)),Eint 5));;
-(* Assert per liste *)
-typeinf (Cons(Eint 1, Cons(Eint 2, Empty)));;
-typeinf Empty;;
 (* Assert generici *)
 typeinf(Echar 'c');;
 typeinf(Sum(Eint 2, Echar 'c'));;
 typeinf(Eq(Echar 'c', Eint 2));;
 typeinf(Eq(Echar 'c', Echar 'd'));;
 typeinf(Eq(Echar 'c', Echar 'c'));;
-
+(* Assert per liste *)
+typeinf (Cons(Eint 1, Cons(Eint 2, Empty)));;
+typeinf Empty;;
 (* TODO testare tutto il resto *)

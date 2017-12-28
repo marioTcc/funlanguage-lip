@@ -6,6 +6,7 @@ type  ide = Ide of string;;
 type etype = 
     TBool 
   | TInt
+  | TChar
   | TVar of string
   | TPair of etype * etype 
   | TList of etype list
@@ -82,7 +83,7 @@ let rec getConstraints expr = match expr with
 (* Inferenza per caratteri *)
     Echar c -> (TChar,[])
 (* Inferenza per numerici *)
-    Eint(x) -> (TInt, [])
+  | Eint x -> (TInt, [])
   | Sum(t1,t2) | Diff(t1,t2) | Times(t1,t2) -> 
       let ((t1Type, t1Constrs),(t2Type, t2Constrs)) = (getConstraints t1, getConstraints t2)
             in (TInt, ([(t1Type,TInt)]@
@@ -107,12 +108,13 @@ let rec getConstraints expr = match expr with
                     [(t2Type, TInt)]@
                     (t1Constrs)@
                     (t2Constrs)))
-  | Eq(t1,t2) ->(* !!! l'ha sbagliata pinna? al momento confronta fischi con fiaschi !!! *)
+  | Eq(t1,t2) ->
       let ((t1Type,t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1,getConstraints t2)
-        in (TBool, ([(t1Type, t1Type)]@
+        in (TBool, ([(t1Type, t2Type)]@
+                    [(t1Type, t1Type)]@
                     [(t2Type, t2Type)]@
                     (t1Constrs)@
-                    (t2Constrs)))
+                    (t2Constrs))) 
 (* Inferenza per il tipo coppia *)
   | Pair(t1,t2) -> 
       let ((t1Type,t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1,getConstraints t2)
@@ -153,31 +155,31 @@ let rec getConstraints expr = match expr with
                       (t1Constrs)@
                       (t2Constrs)))
 (* Rompere solo in caso di incendio *)
-  | _ -> failwith "Tipo non inferibile";;
+  | _ -> failwith "Tipo non inferibile"
+
+and
 
 (* Risolve i vincoli (entry point dell'algoritmo di unificazione) *)
 (* !!! Per il momendo restituisce true se l'espressione ÅË inferenziabile false (invece che esplodere
    se non lo ÅË, da modificare con eccezioni poi TODO !!! *)
-let rec solveConstraints constrs = match constrs with
+solveConstraints constrs = match constrs with
     [] -> true
   | hd::tl -> match fst hd, snd hd with
         (* Regola 2 *)
-        (TVar name, _) -> if not (isContainedInExpr name (snd hd)) (* Se il lato sinistro ÅË una variabile che non compare a destra *)
+        (TVar name, _) -> if not (isContainedInExpr name (snd hd)) (* Se il lato sinistro ÅÅË una variabile che non compare a destra *)
                           then solveConstraints (subst (snd hd) name constrs)
-                          else false (* TODO implementare eccezione *)
-      | (_, TVar name) -> if not (isContainedInExpr name (fst hd)) (* Se il lato destro ÅË una variabile che non compare a sinistra *)
+                          else false
+      | (_, TVar name) -> if not (isContainedInExpr name (fst hd)) (* Se il lato destro ÅÅË una variabile che non compare a sinistra *)
                           then solveConstraints (subst (fst hd) name constrs )
                           else false
         (* Regola 3 *)
-        (* le condizioni si possono unificare ma emacs rompe i coglioni TODO *)
-      | (TFun(a,b), TFun(c,d)) -> solveConstraints ((a,c)::(b,d)::tl)
-      | (TPair(a,b),TPair(c,d)) -> solveConstraints ((a,c)::(b,d)::tl)
-      (*| (TList[a], TList[b]) -> solveConstraints ((a,b)::tl) *)
+      | (TFun(a,b), TFun(c,d)) | (TPair(a,b),TPair(c,d)) -> solveConstraints ((a,c)::(b,d)::tl)
+     (* | (TList a, TList b) -> solveConstraints ((a,b)::tl) TODO da verificare bene *)
         (* Regola 1 *)
-      | (TInt,TInt) | (TBool,TBool) -> solveConstraints tl
+      | (TInt,TInt) | (TBool,TBool) | (TChar,TChar) -> solveConstraints tl
       | _ -> false
 
-(* Se il tipo Ë inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
+(* Se il tipo ÅÅË inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
 in let exprConstraints = getConstraints expr
 in (if solveConstraints ( snd exprConstraints ) then fst exprConstraints else failwith "Tipo non inferibile");;
 (* !!! TODO mancano varie cose delle liste !!! *)
