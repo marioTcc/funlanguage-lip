@@ -22,4 +22,4 @@ A: Se volete si.
 
 Q: La definizione di env a pag 6 è corretta? Non dovrebbe essere 
 type env = ide -> eval?
-A: dipende dall’implementazione. Potete quindi, se volete, ridefinire il tipo dell’ambiente come type env = ide -> eval. In effetti è più naturale in questo modo che non type env = string -> eval
+A: dipende dall’implementazione. Potete quindi, se volete, ridefinire il tipo dell’ambiente come type env = ide -> eval. In effetti è più naturale in questo modo che non type env = string -> eval  
