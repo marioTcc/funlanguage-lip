@@ -52,9 +52,10 @@ let rec isContainedInExpr name expr = match expr with
     TBool | TInt | TChar -> false
   | TVar n -> n = name
   | TPair(t1,t2) | TFun (t1,t2) -> (isContainedInExpr name t1) || (isContainedInExpr name t2)
-  | TList [t] -> match t with
+  | TList [t] -> (match t with
         TVar n -> n = name
-      | _ -> isContainedInExpr name t
+      | _ -> isContainedInExpr name t)
+  | _ -> failwith "Errore nella verifica di occorrenza"
 ;;
 
 
@@ -65,9 +66,10 @@ let rec subst newVal oldVal constrs =
     | TVar value -> if value = oldVal then newVal else TVar value
     | TPair(t1,t2) -> TPair(substValue newVal oldVal t1, substValue newVal oldVal t2)
     | TFun(t1,t2) -> TFun(substValue newVal oldVal t1, substValue newVal oldVal t2)
-    | TList [t] -> match t with
+    | TList [t] -> (match t with
           TVar oldVal -> TList [newVal]
-        | _ -> substValue newVal oldVal t
+        | _ -> substValue newVal oldVal t)
+    | _ -> failwith "Errore nella sostituzione"
 in List.fold_right (fun x acc -> (substValue newVal oldVal (fst x), substValue newVal oldVal (snd x))::acc) 
                                 constrs [];;
   
@@ -122,16 +124,20 @@ let rec getConstraints expr = match expr with
                                    [(t2Type,t2Type)]@
                                     (t1Constrs)@
                                     (t2Constrs)))
-  | Fst(t) ->
-      let (TPair(typeL, typeR),tConstrs) = getConstraints t
-        in (typeL, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
+  | Fst(Pair(a,b) as t) ->
+      let (tType,tConstrs) = getConstraints t
+        in (match tType with
+            (TPair(typeL,typeR)) -> (typeL, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
                      (tConstrs)))
-  | Snd(t) ->
-      let (TPair(typeL, typeR),tConstrs) = getConstraints t
-        in (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
+          | _ -> failwith "L espressione non e una coppia")
+  | Snd(Pair(a,b) as t) ->
+      let (tType,tConstrs) = getConstraints t
+        in (match tType with
+                (TPair(typeL,typeR)) -> (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
                      (tConstrs)))
+              | _ -> failwith "L espressione non e una lista")
 (* Inferenza per il tipo lista !! potrebbe servire modificarli !!! TODO *)
-  | Head(l) -> 
+  | Head l -> 
       let (lType, lConstraints) = getConstraints l 
         in (lType, ([(TList [lType], TList [lType])]@lConstraints)) 
   | Tail l -> (* non funge *)
@@ -166,20 +172,20 @@ solveConstraints constrs = match constrs with
     [] -> true
   | hd::tl -> match fst hd, snd hd with
         (* Regola 2 *)
-        (TVar name, _) -> if not (isContainedInExpr name (snd hd)) (* Se il lato sinistro ÅÅË una variabile che non compare a destra *)
+        (TVar (_ as name), _) -> if not (isContainedInExpr name (snd hd)) (* Se il lato sinistro ÅÅË una variabile che non compare a destra *)
                           then solveConstraints (subst (snd hd) name constrs)
                           else false
-      | (_, TVar name) -> if not (isContainedInExpr name (fst hd)) (* Se il lato destro ÅÅË una variabile che non compare a sinistra *)
+      | (_, TVar (_ as name)) -> if not (isContainedInExpr name (fst hd)) (* Se il lato destro ÅÅË una variabile che non compare a sinistra *)
                           then solveConstraints (subst (fst hd) name constrs )
                           else false
         (* Regola 3 *)
       | (TFun(a,b), TFun(c,d)) | (TPair(a,b),TPair(c,d)) -> solveConstraints ((a,c)::(b,d)::tl)
-     (* | (TList a, TList b) -> solveConstraints ((a,b)::tl) TODO da verificare bene *)
+      | (TList [a], TList [b]) -> solveConstraints ((a,b)::tl)
         (* Regola 1 *)
       | (TInt,TInt) | (TBool,TBool) | (TChar,TChar) -> solveConstraints tl
       | _ -> false
 
-(* Se il tipo ÅÅË inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
+(* Se il tipo e inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
 in let exprConstraints = getConstraints expr
 in (if solveConstraints ( snd exprConstraints ) then fst exprConstraints else failwith "Tipo non inferibile");;
 (* !!! TODO mancano varie cose delle liste !!! *)

@@ -39,6 +39,12 @@ typeinf (Sum(Fst(Pair(Eint 2,True)),Eint 4));;
 typeinf (Sum(Fst(Pair(True,False)),Eint 5));;
 (* Assert per Snd *)
 typeinf (Sum(Snd(Pair(True,Eint 2)),Eint 5));;
+(* Assert per Head *)
+typeinf (Head Empty);;
+typeinf (Head(Cons(Eint 1, Empty)));;
+(* Assert per Tail *)
+typeinf (Tail Empty);;
+typeinf (Tail(Cons(Eint 1, Empty)));;
 (* Assert generici *)
 typeinf(Echar 'c');;
 typeinf(Sum(Eint 2, Echar 'c'));;
