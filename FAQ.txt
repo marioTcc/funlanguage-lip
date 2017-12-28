@@ -1,11 +1,25 @@
+Q: è corretto che tra i valori di tipo exp non compaia il valore List ?
+A: è corretto: il costruttore per la lista è Empty (lista vuota, come si evince dalla semantica) e poi il Cons of exp * exp che corrisponde ai :: dell’Ocaml.
+Q: Se si quale è il procedimento per implementare la lista? 
+A: Come illustrato prima, ovviamente i selettori della testa e del resto della lista sono quelli ovvi.
 
 
-	1) Come si implementa una lista se la lista non è un tipo di exp ?
-	2) La formula dell'uguaglianza  pag 3 è corretta ? potrebbe essere che manchi
-       il vincolo che forzi il tipo a sinistra dell'uguale ad essere uguale a quello
-       a destra dell'uguale
-	3) L'equivalente di List.hd deve restituire eccezione come la funzione di libreria ?
-		Cioè sem(Head([]) = Error -> Error oppure sem(Head([])) = []
-	4) La regola di inferenza per il not a pag 3 Ã¨ corretta ? 
-	5) Può essere che manchi il tipo Tchar per l'inferenza di Echar?
-	6) Si può usare ai fini della modularitÃ  del progetto la funzione use per utilizzare qualcosa definito in un altro file (ad esempio #use)?
+Q: La formula dell'uguaglianza  a pag 3 è corretta? 
+Dopo un'attenta analisi sembrerebbe mancare la forzatura dell'uguaglianza tra il termine a sinistra ed il termine a destra dell'uguale.
+A: Avete ragione, tra i vincoli che si generano manca questo: (t1,t2)
+
+Q: L'equivalente di List.hd con argomento la lista vuota deve restituire eccezione come la funzione di libreria oppure deve restituire la lista vuota?
+A: A vostro piacimento
+
+Q: La regola di inferenza per il not a pag 3 è corretta?
+A: Si
+
+Q: Può essere che manchi il valore TChar per il tipo etype per l'inferenza di Echar?
+A: Si. Manca. Aggiungetelo. Provvederò a creare un file con i tipi.
+
+Q: Si può usare ai fini della modularità del progetto la keyword #use per utilizzare qualcosa definito in un altro file; nello specifico vorremmo collegare la typeinf ai controlli per la valutazione di sem?
+A: Se volete si.
+
+Q: La definizione di env a pag 6 è corretta? Non dovrebbe essere 
+type env = ide -> eval?
+A: dipende dall’implementazione. Potete quindi, se volete, ridefinire il tipo dell’ambiente come type env = ide -> eval. In effetti è più naturale in questo modo che non type env = string -> eval
