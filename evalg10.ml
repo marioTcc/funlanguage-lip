@@ -1,16 +1,6 @@
-(***************************************)
-(********TIPO PER I TIPI DI FUN*********)
-(***************************************)
 
-(*****************************************)
-(*******TIPO PER L'IDENTIFICATORE*********)
-(*****************************************)
 type ide = Ide of string;;
 
-(*****************************************)
-(*DEFINISCO CONTEMPORANEAMENTE EXP E EVAL*)
-(****ENV ED I VALORI RESTITUITI DA EXP****)
-(*****************************************)
 type exp =
 Val of ide
 | Eint of int
@@ -31,7 +21,7 @@ Val of ide
 | Tail of exp
 | Fst of exp
 | Snd of exp
-| Pair of exp * exp
+| Epair of exp * exp
 | Ifthenelse of exp * exp * exp
 | Let of ide * exp * exp
 | Fun of ide * exp
@@ -50,18 +40,7 @@ type eval =
 
 and
 
-(*****************************************)
-(*******DEFINIZIONE DELL'AMBIENTE*********)
-(*****************************************)
 env = ide -> eval;;
-
-(*****************************************)
-(***********FUNZIONE  TYPEINF*************)
-(*****************************************)
-
-(*****************************************)
-(*********FUNZIONI PER SEM****************)
-(*****************************************)
 
 let typeChecker (tipo,value) =
   match tipo with
@@ -74,35 +53,35 @@ let typeChecker (tipo,value) =
     | "char" -> (match value with 
                      Char(x) -> true
                   | _ -> false)
-    | _ -> failwith ("Invalid type")
+    | _ -> failwith ("Invalid type");;
 
 let eq (x,y) =
     if typeChecker("int",x) && typeChecker("int",y) then (
         match (x,y) with
               (Int(u), Int(w)) -> Bool(u = w)
             | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error")
+    else failwith ("Type error");;
 
 let less (x,y) =
     if typeChecker("int",x) && typeChecker("int",y) then (
         match (x,y) with
               (Int(u), Int(w)) -> Bool(u < w)
             | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error")
+    else failwith ("Type error");;
 
 let sum (x,y) =
     if typeChecker("int",x) && typeChecker("int",y) then (
         match (x,y) with
               (Int(u), Int(w)) -> Int(u+w)
             | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error")
+    else failwith ("Type error");;
 
 let diff (x,y) =
     if typeChecker("int",x) && typeChecker("int",y) then (
         match (x,y) with
               (Int(u), Int(w)) -> Int(u-w)
             | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error")
+    else failwith ("Type error");;
   
 
 let times (x,y) =
@@ -110,21 +89,21 @@ let times (x,y) =
         match (x,y) with
               (Int(u), Int(w)) -> Int(u*w)
             | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error")
+    else failwith ("Type error");;
 
 let logicAnd (x,y) =
     if typeChecker("bool",x) && typeChecker("bool",y) then (
         match (x,y) with
               (Bool(u), Bool(w)) -> Bool(u && w)
             | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error")
+    else failwith ("Type error");;
 
 let logicOr (x,y) =
     if typeChecker("bool",x) && typeChecker("bool",y) then (
         match (x,y) with
               (Bool(u), Bool(w)) -> Bool(u || w)
             | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error")
+    else failwith ("Type error");;
 
 let unaryNegation x =
     if typeChecker("bool",x) then (
@@ -140,7 +119,6 @@ let cons a b = match b with
    |_ ->failwith"";;
 
 let head l = match l with
-    (*Per ora le gestisco col comportamento delle corrispondente *)
     (List (hd::tl)) -> hd
   | _ -> failwith "";;
 
@@ -148,19 +126,6 @@ let tail l = match l with
     (List (hd::tl)) -> List tl
   | _ -> failwith "";;
   
-(*Come si implementa una lista se la lista non è un tipo di exp ?*)
-(*la formula dell'uguaglianza  pag 3 è corretta ? potrebbe essere che manchi
-  il vincolo che forzi il tipo a sinistra dell'uguale ad essere uguale a quello
-  a destra dell'uguale*)
-  
-(*chiedere a Pinna se una lista vuota va gestita come []::[] oppure lancia
-  eccezione su hd e tl e restituisce empty *)
-
-(*la regola di inferenza per il not a pag 3 è corretta ? *)
-
-(*****************************************)
-(******************SEM********************)
-(*****************************************)
 let rec sem (e:exp) =
   match e with
       | Eint(n) -> Int(n)
@@ -171,9 +136,9 @@ let rec sem (e:exp) =
       | Cons(a,b) -> cons (sem a) (sem b)
       | Head a -> head (sem a) 
       | Tail a -> tail  (sem a)
-      | Pair(a,b) -> pair(sem(a),sem(b))
-      | Fst(Pair(a,b)) -> sem(a)
-      | Snd(Pair(a,b)) -> sem(b)
+      | Epair(a,b) -> pair(sem(a),sem(b))
+      | Fst(Epair(a,b)) -> sem(a)
+      | Snd(Epair(a,b)) -> sem(b)
       | Eq(a,b) -> eq( (sem a),(sem b) )
       | Times(a,b) -> times( (sem a),(sem b) )
       | Sum(a,b) -> sum( (sem a),(sem b) )
@@ -211,14 +176,11 @@ let rec sem (e:exp) =
  sem(True);;
  sem(False);;
  sem(Empty);;
- sem(Fst(Pair( Sum(Eint 5,Eint 3) , Diff(Eint 5,Eint 3) )));;
- sem(Snd(Pair( Sum(Eint 5,Eint 3) , Diff(Eint 5,Eint 3) )));;    
- sem(Fst(Sum(Eint 2, Eint 3)));;
+ sem(Fst(Epair( Sum(Eint 5,Eint 3) , Diff(Eint 5,Eint 3) )));;
+ sem(Snd(Epair( Sum(Eint 5,Eint 3) , Diff(Eint 5,Eint 3) )));;    
  sem(Sum(Eint 2,Eint 3));;     
  sem ((Cons(Eint 4,Cons(Eint 2,(Cons(Eint 1,Empty))))));;
  sem ((Head(Cons(Eint 2,(Cons(Eint 1,Empty))))));;
  sem ((Head(Cons(Eint 2,Empty))));;
- sem(Head(Empty));;
  sem ((Tail((Cons(Eint 3,Cons(Eint 2,(Cons(Eint 1,Empty))))))));;   
- sem ((Tail(Cons(Eint 10,Empty))));;
- sem (Tail(Empty));;    
+ sem ((Tail(Cons(Eint 10,Empty))));;   
