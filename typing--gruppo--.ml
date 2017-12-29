@@ -33,7 +33,7 @@ type exp =
   | Tail of exp 
   | Fst of exp 
   | Snd of exp
-  | Pair of exp * exp 
+  | EPair of exp * exp 
   | Ifthenelse of exp * exp * exp 
   | Let of ide * exp * exp 
   | Fun of ide * exp 
@@ -140,10 +140,10 @@ let rec getConstraints expr = match expr with
   | Head l -> 
       let (lType, lConstraints) = getConstraints l 
         in (lType, ([(TList [lType], TList [lType])]@lConstraints)) 
-  | Tail l -> (* non funge *)
+  | Tail l ->
       let (lType,lConstraints) = getConstraints l
         in (lType, (lConstraints))
-  | Cons(t1,t2) ->(* non funge *)
+  | Cons(t1,t2) ->
       let ((t1Type, t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1, getConstraints t2)
         in (TList [t1Type], ([(t1Type,t1Type)]@
                        [(t2Type, TList [t1Type])])@

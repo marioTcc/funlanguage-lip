@@ -55,4 +55,8 @@ typeinf(Eq(Echar 'c', Echar 'c'));;
 typeinf (Cons(Eint 1, Cons(Eint 2, Empty)));;
 typeinf (Cons(Eint 1, Empty));;
 typeinf Empty;;
+typeinf (Eq( (Cons(Eint 1, Empty)), (Cons(Eint 1, Empty))));;
+typeinf (Eq( (Cons(Eint 1, Empty)), (Cons(True, Empty))));;
+typeinf (   Cons(  Eint 1,    (Cons(Eint 2, Empty))));;
 (* TODO testare tutto il resto *)
+
