@@ -6,6 +6,7 @@ type  ide = Ide of string;;
 type etype = 
     TBool 
   | TInt
+  | TChar
   | TVar of string
   | TPair of etype * etype 
   | TList of etype list
@@ -32,45 +33,59 @@ type exp =
   | Tail of exp 
   | Fst of exp 
   | Snd of exp
-  | Pair of exp * exp 
+  | EPair of exp * exp 
   | Ifthenelse of exp * exp * exp 
   | Let of ide * exp * exp 
   | Fun of ide * exp 
   | Appl of exp * exp (*sbagliato da Pinna*)
   | Rec of ide * exp;;
 
+
+
 (* TODO Definizione ambiente per i tipi *)
+(* !!! TODO rivedere inferenza liste in generale !!! *)
+
 
 
 (* Verifica (true) se la variabile di tipo di nome name compare in expr, false altrimenti *)
 let rec isContainedInExpr name expr = match expr with
-    TBool | TInt -> false
+    TBool | TInt | TChar -> false
   | TVar n -> n = name
   | TPair(t1,t2) | TFun (t1,t2) -> (isContainedInExpr name t1) || (isContainedInExpr name t2)
- (* | TList(TVar t) -> name = t*);;
+  | TList [t] -> (match t with
+        TVar n -> n = name
+      | _ -> isContainedInExpr name t)
+  | _ -> failwith "Errore nella verifica di occorrenza"
+;;
+
 
 (* Algoritmo di sostituzione *)
 let rec subst newVal oldVal constrs = 
   let rec substValue newVal oldVal expr = match expr with
-      TBool | TInt -> expr
+      TBool | TInt | TChar -> expr
     | TVar value -> if value = oldVal then newVal else TVar value
     | TPair(t1,t2) -> TPair(substValue newVal oldVal t1, substValue newVal oldVal t2)
     | TFun(t1,t2) -> TFun(substValue newVal oldVal t1, substValue newVal oldVal t2)
-  (*  | TList(t) -> if t = TVar oldVal then TList newVal else TList(t)*)
+    | TList [t] -> (match t with
+          TVar oldVal -> TList [newVal]
+        | _ -> substValue newVal oldVal t)
+    | _ -> failwith "Errore nella sostituzione"
 in List.fold_right (fun x acc -> (substValue newVal oldVal (fst x), substValue newVal oldVal (snd x))::acc) 
                                 constrs [];;
   
 
 
+
+
 let rec typeinf expr = 
 (* Genera una coppia (tipo espressione, lista di vincoli) *)
 (* !!!!!!!!!!! Ne mancano parecchi TODO !!!!!!!!! *)
-(* !!! ÅË pesantissimo, serve ottimizzarlo? !!! *)
 let rec getConstraints expr = match expr with
 (* TODO qui ci va Val(x:ide) tale che <<x,type>> --> (type(x),vuoto) ovvero si chiede il tipo all' ambiente dei tipi *)
-(* Inferenza per char ma non so come si fa (per ora) TODO*)
+(* Inferenza per caratteri *)
+    Echar c -> (TChar,[])
 (* Inferenza per numerici *)
-    Eint(x) -> (TInt, [])
+  | Eint x -> (TInt, [])
   | Sum(t1,t2) | Diff(t1,t2) | Times(t1,t2) -> 
       let ((t1Type, t1Constrs),(t2Type, t2Constrs)) = (getConstraints t1, getConstraints t2)
             in (TInt, ([(t1Type,TInt)]@
@@ -95,27 +110,58 @@ let rec getConstraints expr = match expr with
                     [(t2Type, TInt)]@
                     (t1Constrs)@
                     (t2Constrs)))
-  | Eq(t1,t2) ->(* !!! l'ha sbagliata pinna? al momento confronta fischi con fiaschi !!! *)
+  | Eq(t1,t2) ->
       let ((t1Type,t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1,getConstraints t2)
-        in (TBool, ([(t1Type, t1Type)]@
+        in (TBool, ([(t1Type, t2Type)]@
+                    [(t1Type, t1Type)]@
                     [(t2Type, t2Type)]@
                     (t1Constrs)@
                     (t2Constrs))) 
+(* Inferenza per il tipo coppia *)
   | Pair(t1,t2) -> 
       let ((t1Type,t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1,getConstraints t2)
         in ( TPair(t1Type,t2Type),([(t1Type,t1Type)]@
                                    [(t2Type,t2Type)]@
                                     (t1Constrs)@
                                     (t2Constrs)))
-  | Fst(t) ->
-      let (TPair(typeL, typeR),tConstrs) = getConstraints t
-        in (typeL, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
+  | Fst(Pair(a,b) as t) ->
+      let (tType,tConstrs) = getConstraints t
+        in (match tType with
+            (TPair(typeL,typeR)) -> (typeL, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
                      (tConstrs)))
-  | Snd(t) ->
-      let (TPair(typeL, typeR),tConstrs) = getConstraints t
-        in (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
+          | _ -> failwith "L espressione non e una coppia")
+  | Snd(Pair(a,b) as t) ->
+      let (tType,tConstrs) = getConstraints t
+        in (match tType with
+                (TPair(typeL,typeR)) -> (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
                      (tConstrs)))
-
+              | _ -> failwith "L espressione non e una lista")
+(* Inferenza per il tipo lista !! potrebbe servire modificarli !!! TODO *)
+  | Head l -> 
+      let (lType, lConstraints) = getConstraints l 
+        in (lType, ([(TList [lType], TList [lType])]@lConstraints)) 
+  | Tail l ->
+      let (lType,lConstraints) = getConstraints l
+        in (lType, (lConstraints))
+  | Cons(t1,t2) ->
+      let ((t1Type, t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1, getConstraints t2)
+        in (TList [t1Type], ([(t1Type,t1Type)]@
+                       [(t2Type, TList [t1Type])])@
+                       (t1Constrs)@
+                       (t2Constrs))
+             (* !!! TMP !!! TODO *)
+  | Empty -> (TList [TInt], [])
+(* !!! TODO !!! *)
+(* Inferenza per if-then-else *)
+  | Ifthenelse(b,t1,t2) ->
+      let ((bType,bConstrs),(t1Type,t1Constrs),(t2Type,t2Constrs)) = (getConstraints b,getConstraints t1, getConstraints t2)
+        in  (t1Type, ([(bType,TBool)]@
+                      [(t1Type,t2Type)]@
+                      (bConstrs)@
+                      (t1Constrs)@
+                      (t2Constrs)))
+(* Rompere solo in caso di incendio *)
+  | _ -> failwith "Tipo non inferibile"
 
 and
 
@@ -126,21 +172,20 @@ solveConstraints constrs = match constrs with
     [] -> true
   | hd::tl -> match fst hd, snd hd with
         (* Regola 2 *)
-        (TVar name, _) -> if not (isContainedInExpr name (snd hd)) (* Se il lato sinistro ÅË una variabile che non compare a destra *)
+        (TVar (_ as name), _) -> if not (isContainedInExpr name (snd hd)) (* Se il lato sinistro ÅÅË una variabile che non compare a destra *)
                           then solveConstraints (subst (snd hd) name constrs)
-                          else false (* TODO implementare eccezione *)
-      | (_, TVar name) -> if not (isContainedInExpr name (fst hd)) (* Se il lato destro ÅË una variabile che non compare a sinistra *)
+                          else false
+      | (_, TVar (_ as name)) -> if not (isContainedInExpr name (fst hd)) (* Se il lato destro ÅÅË una variabile che non compare a sinistra *)
                           then solveConstraints (subst (fst hd) name constrs )
                           else false
         (* Regola 3 *)
-        (* le condizioni si possono unificare ma emacs rompe i coglioni TODO *)
-      | (TFun(a,b), TFun(c,d)) -> solveConstraints ((a,c)::(b,d)::tl)
-      | (TPair(a,b),TPair(c,d)) -> solveConstraints ((a,c)::(b,d)::tl)
-     (* oh ma sta cazzo di lista serve o no?  | (TList a, TList b) -> solveConstraints ((a,b)::tl) *)
+      | (TFun(a,b), TFun(c,d)) | (TPair(a,b),TPair(c,d)) -> solveConstraints ((a,c)::(b,d)::tl)
+      | (TList [a], TList [b]) -> solveConstraints ((a,b)::tl)
         (* Regola 1 *)
-      | (TInt,TInt) | (TBool,TBool) -> solveConstraints tl
+      | (TInt,TInt) | (TBool,TBool) | (TChar,TChar) -> solveConstraints tl
       | _ -> false
 
-(* Se il tipo ÅË inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
-in (if solveConstraints(snd( getConstraints expr) ) then (fst (getConstraints expr)) else failwith "Tipo non inferibile");;
-
+(* Se il tipo e inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
+in let exprConstraints = getConstraints expr
+in (if solveConstraints ( snd exprConstraints ) then fst exprConstraints else failwith "Tipo non inferibile");;
+(* !!! TODO mancano varie cose delle liste !!! *)
