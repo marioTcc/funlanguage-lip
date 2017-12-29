@@ -1,6 +1,6 @@
 
 (* Identificatori (nomi di variabile) *)
-type  ide = Ide of string;;
+(* type  ide = Ide of string;; TEMPORANEAMENTE RIMOSSO *)
 
 (* Tipi di valutazione per inferenza dei tipi*)
 type etype = 
@@ -13,6 +13,7 @@ type etype =
   | TFun of etype * etype;;
 
 (* Tipo dell'espressione *)
+(* TEMPORANEAMENTE RIMOSSO
 type exp = 
     Val of ide
   | Eint of int
@@ -33,12 +34,12 @@ type exp =
   | Tail of exp 
   | Fst of exp 
   | Snd of exp
-  | EPair of exp * exp 
+  | Epair of exp * exp 
   | Ifthenelse of exp * exp * exp 
   | Let of ide * exp * exp 
   | Fun of ide * exp 
-  | Appl of exp * exp (*sbagliato da Pinna*)
-  | Rec of ide * exp;;
+  | Appl of exp * exp 
+  | Rec of ide * exp;;*)
 
 
 
@@ -118,19 +119,19 @@ let rec getConstraints expr = match expr with
                     (t1Constrs)@
                     (t2Constrs))) 
 (* Inferenza per il tipo coppia *)
-  | Pair(t1,t2) -> 
+  | Epair(t1,t2) -> 
       let ((t1Type,t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1,getConstraints t2)
         in ( TPair(t1Type,t2Type),([(t1Type,t1Type)]@
                                    [(t2Type,t2Type)]@
                                     (t1Constrs)@
                                     (t2Constrs)))
-  | Fst(Pair(a,b) as t) ->
+  | Fst(Epair(a,b) as t) ->
       let (tType,tConstrs) = getConstraints t
         in (match tType with
             (TPair(typeL,typeR)) -> (typeL, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
                      (tConstrs)))
           | _ -> failwith "L espressione non e una coppia")
-  | Snd(Pair(a,b) as t) ->
+  | Snd(Epair(a,b) as t) ->
       let (tType,tConstrs) = getConstraints t
         in (match tType with
                 (TPair(typeL,typeR)) -> (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
