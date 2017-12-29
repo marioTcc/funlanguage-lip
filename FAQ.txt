@@ -23,3 +23,10 @@ A: Se volete si.
 Q: La definizione di env a pag 6 è corretta? Non dovrebbe essere 
 type env = ide -> eval?
 A: dipende dall’implementazione. Potete quindi, se volete, ridefinire il tipo dell’ambiente come type env = ide -> eval. In effetti è più naturale in questo modo che non type env = string -> eval  
+
+Q: è corretto che Pair compaia con lo stesso nome sia in exp che in eval ? Ciò non potrebbe creare conflitti nella valutazione per interprete e compilatore 
+A: nel tipo exp il costruttore per le coppie corretto è Epair
+
+Q: Per quanto riguarda la funzione applyenv definita a pagina 6, è scritto che quest'ultima riceve una coppia di tipo (env,ide) ma è specificato anche che l'interpretazione della funzione deve restituire (ide -> eval) * ide -> eval . è corretto? la forzatura di r ad env produce il risultato env*ide -> eval, mentre la forzatura di r ad (ide -> eval) violerebbe quanto scritto.
+A: alla luce del punto 7, env e ide -> eval sono lo stesso tipo. Talvolta Ocaml protesta, però sono sostanzialmente lo stesso tipo, quindi il tipo della applyenv può essere visto come (ide -> eval) * ide -> eval o come  env * ide -> eval dato che env e ide -> eval sono lo stesso tipo
+
