@@ -42,6 +42,11 @@ and
 
 env = ide -> eval;;
 
+let emptyenv = function (i:ide) -> Undefined;;
+let applyenv ((r:env),(x:ide))= r x ;;
+let bind (ambiente, nome, ev) =
+ function lu -> if lu = nome then ev else applyenv (ambiente, lu);;
+
 let typeChecker (tipo,value) =
   match tipo with
       "int" -> (match value with
@@ -126,31 +131,34 @@ let tail l = match l with
     (List (hd::tl)) -> List tl
   | _ -> failwith "";;
   
-let rec sem (e:exp) =
+let rec sem (e:exp) (amb:env) =
   match e with
+      | Val x -> applyenv (amb, x)
       | Eint(n) -> Int(n)
       | Echar(b) -> Char(b)
       | True -> Bool(true)
       | False -> Bool(false)
       | Empty -> List []
-      | Cons(a,b) -> cons (sem a) (sem b)
-      | Head a -> head (sem a) 
-      | Tail a -> tail  (sem a)
-      | Epair(a,b) -> pair(sem(a),sem(b))
-      | Fst(Epair(a,b)) -> sem(a)
-      | Snd(Epair(a,b)) -> sem(b)
-      | Eq(a,b) -> eq( (sem a),(sem b) )
-      | Times(a,b) -> times( (sem a),(sem b) )
-      | Sum(a,b) -> sum( (sem a),(sem b) )
-      | Diff(a,b)  -> diff( (sem a),(sem b) )
-      | And(a,b) -> logicAnd( (sem a),(sem b) )
-      | Or(a,b) ->  logicOr( (sem a),(sem b) )
-      | Less(a,b) -> less( sem(a),sem(b) )
-      | Not(a) -> unaryNegation( (sem a) )
-      | Ifthenelse(a,b,c) ->  let g = sem a in if typeChecker("bool",g) then
+      | Cons(a,b) -> cons (sem a amb) (sem b amb)
+      | Head a -> head (sem a amb) 
+      | Tail a -> tail  (sem a amb)
+      | Epair(a,b) -> pair(sem a amb,sem b amb)
+      | Fst(Epair(a,b)) -> sem a amb
+      | Snd(Epair(a,b)) -> sem b amb
+      | Eq(a,b) -> eq( (sem a amb),(sem b amb) )
+      | Times(a,b) -> times( (sem a amb),(sem b amb) )
+      | Sum(a,b) -> sum( (sem a amb),(sem b amb) )
+      | Diff(a,b)  -> diff( (sem a amb),(sem b amb) )
+      | And(a,b) -> logicAnd( (sem a amb),(sem b amb) )
+      | Or(a,b) ->  logicOr( (sem a amb),(sem b amb) )
+      | Less(a,b) -> less( sem a amb,sem b amb)
+      | Not(a) -> unaryNegation( (sem a amb) )
+      | Ifthenelse(a,b,c) ->  let g = sem a amb in if typeChecker("bool",g) then
                                                  (if g = Bool(true) 
-                                                   then sem b else sem c)
+                                                   then sem b amb else sem c amb)
                            else failwith ("Condizione booleana non rispettata")
+      | Let(a,b,c) -> sem c (bind (emptyenv,a,(sem b emptyenv)));;
+      | Fun(a,b) -> 
       | _ -> failwith "Command not recognized";;
 
 
@@ -183,4 +191,7 @@ let rec sem (e:exp) =
  sem ((Head(Cons(Eint 2,(Cons(Eint 1,Empty))))));;
  sem ((Head(Cons(Eint 2,Empty))));;
  sem ((Tail((Cons(Eint 3,Cons(Eint 2,(Cons(Eint 1,Empty))))))));;   
- sem ((Tail(Cons(Eint 10,Empty))));;   
+ sem ((Tail(Cons(Eint 10,Empty))));; 
+ 
+sem(Sum( Val (Ide "x"), Eint 2) ) (bind (emptyenv, (Ide "x"), (Int 3)));;
+sem(Let((Ide "x"),(Sum(Eint 2,Eint 3)),(Times(Val(Ide "x"), Eint 3))))emptyenv;;
