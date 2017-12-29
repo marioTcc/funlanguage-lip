@@ -1,5 +1,5 @@
 #use "evalg10.ml";;
-#use "typing--gruppo--.ml";;
+#use "typingg10.ml";;
 
 
 (* Input: espressione
