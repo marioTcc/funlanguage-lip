@@ -47,6 +47,16 @@ let applyenv ((r:env),(x:ide))= r x ;;
 let bind (ambiente, nome, ev) =
  function lu -> if lu = nome then ev else applyenv (ambiente, lu);;
 
+(* Qualche test    DA RIMUOVERE TODO *)
+let amb1 = bind (emptyenv, (Ide "x"), (Int 2));;
+let amb2 = bind (amb1, (Ide "y"), (Char 'c'));;
+let amb3 = bind (amb2, (Ide "x"), (Bool true));;
+applyenv (amb1, Ide "x");;
+applyenv (amb2, Ide "x");;
+applyenv (amb3, Ide "x");;
+
+
+
 let typeChecker (tipo,value) =
   match tipo with
       "int" -> (match value with
@@ -131,6 +141,35 @@ let tail l = match l with
     (List (hd::tl)) -> List tl
   | _ -> failwith "";;
   
+
+(* TODO eccezione valore non in ambiente vecchio *)
+let rec calcFV expr amb_old amb_new = match expr with
+
+    (* Se si incontra un identificatore *)
+    Val var -> bind (amb_new, var, applyenv (amb_old,var)) 
+
+  | Eint a -> amb_new
+  | Echar a -> amb_new
+  | True | False | Empty -> amb_new
+
+  | Sum(t1,t2) | Diff(t1,t2) | Times(t1,t2) 
+  | And(t1,t2) | Or(t1,t2) | Eq(t1,t2) | Less(t1,t2) 
+  | Cons(t1,t2) | Epair(t1,t2) | Appl(t1,t2) 
+      -> calcFV t1 amb_old (calcFV t2 amb_old amb_new)
+
+  | Head t | Tail t | Fst t | Snd t | Not t -> calcFV t amb_old amb_new (* Per ora il Not lo parcheggio qui, ma boh *)
+
+  | Ifthenelse (t0,t1,t2) -> calcFV t0 amb_old (calcFV t1 amb_old (calcFV t2 amb_old amb_new))
+
+  | Fun (x, t1) -> calcFV t1 amb_old (bind (amb_new, x, Undefined))
+
+  | Let (x, t1, t2) -> calcFV t1 amb_old 
+      (calcFV t2 amb_old (bind (amb_new, x, Undefined)))
+;;
+
+
+
+
 let rec sem (e:exp) (amb:env) =
   match e with
       | Val x -> applyenv (amb, x)
@@ -157,12 +196,25 @@ let rec sem (e:exp) (amb:env) =
                                                  (if g = Bool(true) 
                                                    then sem b amb else sem c amb)
                            else failwith ("Condizione booleana non rispettata")
-      | Let(a,b,c) -> sem c (bind (emptyenv,a,(sem b emptyenv)));;
-      | Fun(a,b) -> 
+      | Let(a,b,c) -> sem c (bind (amb,a,(sem b amb)))
+      | Fun(a,b) -> Closure( Fun(a,b), calcFV b amb emptyenv) 
+      | Rec(_,_) -> failwith "yet to come" (* TODO *)
+      | Appl(a,b) -> (match sem a amb with
+                          Closure(Fun(parametro,corpo), amb_locale) ->
+                            sem corpo (bind (amb_locale, parametro, sem b amb))
+                        |  _ -> failwith "Funzione non valida")
       | _ -> failwith "Command not recognized";;
 
 
- sem ((Tail(Cons(Eint 10,Empty))));; 
- 
-sem(Sum( Val (Ide "x"), Eint 2) ) (bind (emptyenv, (Ide "x"), (Int 3)));;
-sem(Let((Ide "x"),(Sum(Eint 2,Eint 3)),(Times(Val(Ide "x"), Eint 3))))emptyenv;;
+(* Simpatici test (pochi e inaffidabili) *)
+let amb1 = bind (emptyenv, (Ide "z"), (Int 3));;
+applyenv (amb1, Ide "z");;
+
+let amb2 = calcFV (Sum(Val (Ide "z"), Eint 3)) amb1 emptyenv;;
+applyenv (amb2, Ide "z");;
+applyenv (amb2, Ide "x");;
+
+sem (Appl( Sum(Eint 2, Eint 3), Eint 4)) emptyenv;;
+sem (Appl(Fun(Ide "x", (Sum(Val (Ide "x"), Eint 8))), Eint 3)) emptyenv;;
+sem(Sum(Eint 2,Eint 3))(emptyenv);;
+
