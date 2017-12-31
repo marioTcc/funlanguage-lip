@@ -77,7 +77,12 @@ let eq (x,y) =
       if typeChecker("char",x) && typeChecker("char",y) then(
         match (x,y) with
             (Char(u),Char(w)) -> Bool(u = w))     
-      else failwith ("Errore sul tipo dei dati");;
+      else
+        if typeChecker("bool",x) && typeChecker("bool",y) then(
+          match (x,y) with
+              (Bool(u),Bool(w)) -> Bool(u = w)) 
+        else
+          failwith ("Errore sul tipo dei dati");;
 
 let less (x,y) =
     if typeChecker("int",x) && typeChecker("int",y) then (
@@ -225,3 +230,12 @@ sem(Eq(Eint(100),Echar('p')))(emptyenv);;(*ora eq risolve anche i char*)
 sem(Cons(Eint(-15),Cons(Eint(46),Empty)))(emptyenv);;
 sem(Cons(Echar('a'),Cons(Echar('f'),Empty)))(emptyenv);;
 sem(Cons(True,Cons(False,Empty)))(emptyenv);;
+
+
+sem( Let(
+  Ide "succ",
+  Fun(Ide "x", Sum(Val(Ide "x"), Eint 1)),
+  Appl(Val(Ide "succ"),Eint 8))) emptyenv;;
+
+(*ora eq risolve anche i booleani*)
+sem(Ifthenelse(Eq(True,True),Eint 2,Eint 1))(emptyenv);;
