@@ -1,5 +1,8 @@
-
+  
 type ide = Ide of string;;
+
+exception UndefinedIde of ide;;
+exception TypeMismatch of ide;;
 
 type exp =
 Val of ide
@@ -88,7 +91,7 @@ let sum (x,y) =
         match (x,y) with
               (Int(u), Int(w)) -> Int(u+w)
             | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error");;
+    else failwith ("Type error qui");;
 
 let diff (x,y) =
     if typeChecker("int",x) && typeChecker("int",y) then (
@@ -225,7 +228,10 @@ let rec semtry (e:exp) (amb:env) =
            Closure(Fun(parametro,corpo), amb_locale) ->
              semtry corpo (bind (amb_locale, parametro, semtry b amb))
                         |  _ -> failwith "Funzione non valida")
-      | Raise(a) -> semtry a amb
-      | Try(a,b,c) ->
-	 if((semtry a amb)=(Raise b)) then semtry c amb else semtry a amb
+      | Try(a,b,c) -> (try(semtry a (calcFV a amb emptyenv)) with 
+                          |UndefinedIde ecc -> if ecc=b then semtry c amb else 
+                             failwith "nothing to do")
+      | Raise b -> raise (UndefinedIde b)
       | _ -> failwith "Command not recognized";;
+
+
