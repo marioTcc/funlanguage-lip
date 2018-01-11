@@ -1,8 +1,7 @@
   
 type ide = Ide of string;;
 
-exception UndefinedIde of ide;;
-exception TypeMismatch of ide;;
+exception MyException of ide;;
 
 type exp =
 Val of ide
@@ -63,21 +62,36 @@ let typeChecker (tipo,value) =
     | "char" -> (match value with 
                      Char(x) -> true
                   | _ -> false)
+    | "list" -> (match value with
+                     List(x) -> true
+                  | _ -> false)
+    | "pair" -> (match value with
+                     Pair(x,y) -> true
+                  | _ -> false)
     | _ -> failwith ("Invalid type");;
 
 let eq (x,y) =
-    if typeChecker("int",x) && typeChecker("int",y) then (
+  if typeChecker("int",x) && typeChecker("int",y) then (
         match (x,y) with (Int(u), Int(w)) -> Bool(u = w))
+  else
+    if typeChecker("char",x) && typeChecker("char",y) then(
+      match (x,y) with
+        (Char(u),Char(w)) -> Bool(u = w))     
     else
-      if typeChecker("char",x) && typeChecker("char",y) then(
+      if typeChecker("bool",x) && typeChecker("bool",y) then(
         match (x,y) with
-            (Char(u),Char(w)) -> Bool(u = w))     
+          (Bool(u),Bool(w)) -> Bool(u = w))
       else
-        if typeChecker("bool",x) && typeChecker("bool",y) then(
+	if typeChecker("list",x) && typeChecker("list",y) then(
           match (x,y) with
-              (Bool(u),Bool(w)) -> Bool(u = w)) 
-        else
-          failwith ("Errore sul tipo dei dati");;
+            (List(u),List(w)) -> Bool(u = w))
+	else
+	  if typeChecker("pair",x) && typeChecker("pair",y) then(
+            match (x,y) with
+              (Pair(u,v),Pair(w,z)) ->
+		Bool(u = w && v = z))
+          else
+            failwith ("Errore sul tipo dei dati");;
 
 let less (x,y) =
     if typeChecker("int",x) && typeChecker("int",y) then (
@@ -91,14 +105,14 @@ let sum (x,y) =
         match (x,y) with
               (Int(u), Int(w)) -> Int(u+w)
             | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error qui");;
+    else failwith "Sum operator mismatch ";;
 
 let diff (x,y) =
     if typeChecker("int",x) && typeChecker("int",y) then (
         match (x,y) with
               (Int(u), Int(w)) -> Int(u-w)
             | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error");;
+    else failwith ("Diff operators mismatch");;
   
 
 let times (x,y) =
@@ -106,42 +120,42 @@ let times (x,y) =
         match (x,y) with
               (Int(u), Int(w)) -> Int(u*w)
             | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error");;
+    else failwith ("Times operators mismatch");;
 
 let logicAnd (x,y) =
     if typeChecker("bool",x) && typeChecker("bool",y) then (
         match (x,y) with
               (Bool(u), Bool(w)) -> Bool(u && w)
             | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error");;
+    else failwith ("One or more than one parameters are not of boolean type");;
 
 let logicOr (x,y) =
     if typeChecker("bool",x) && typeChecker("bool",y) then (
         match (x,y) with
               (Bool(u), Bool(w)) -> Bool(u || w)
             | (_, _) -> failwith ("Invalid type") )
-    else failwith ("Type error");;
+    else failwith ("One or more than one parameters are not of boolean type");;
 
 let unaryNegation x =
     if typeChecker("bool",x) then (
         match x with
               Bool(y) -> Bool(not y)
             | (_) -> failwith ("Invalid type") )
-    else failwith ("Type error");;
+    else failwith ("Parameter is not of boolean type");;
 
 let pair (x,y) = Pair(x,y);;
 
 let cons a b = match b with
     (List t) -> List (a::t)
-   |_ ->failwith"";;
+   |_ ->failwith "Parameters type mismatch";;
 
 let head l = match l with
     (List (hd::tl)) -> hd
-  | _ -> failwith "";;
+  | _ -> failwith ("Empty list, cannot find head in such list");;
 
 let tail l = match l with
     (List (hd::tl)) -> List tl
-  | _ -> failwith "";;
+  | _ -> failwith ("Empty list, cannot find tail in such list");;
 
 
 let rec calcFV expr amb_old amb_new =
@@ -160,7 +174,10 @@ let rec calcFV expr amb_old amb_new =
   | Fun (x, t1) -> calcFV t1 amb_old (bind (amb_new, x, Undefined))
   | Rec (y, (Fun(x,t) as t1)) -> calcFV t1 amb_old amb_new
   | Let (x, t1, t2) -> calcFV t1 amb_old 
-      (calcFV t2 amb_old (bind (amb_new, x, Undefined)));;
+      (calcFV t2 amb_old (bind (amb_new, x, Undefined)))
+  | Try (t1,x,t2)->
+     calcFV t1 amb_old (calcFV t2 amb_old (bind(amb_new, x, Undefined)))
+  | Raise(x) -> amb_new;;
 
 let rec substRec newVal oldVal expr = match expr with
     Val name -> if name = oldVal then newVal else Val name
@@ -229,9 +246,48 @@ let rec semtry (e:exp) (amb:env) =
              semtry corpo (bind (amb_locale, parametro, semtry b amb))
                         |  _ -> failwith "Funzione non valida")
       | Try(a,b,c) -> (try(semtry a (calcFV a amb emptyenv)) with 
-                          |UndefinedIde ecc -> if ecc=b then semtry c amb else 
+                          |MyException ecc -> if ecc=b then semtry c amb else 
                              failwith "nothing to do")
-      | Raise b -> raise (UndefinedIde b)
+      | Raise b -> raise (MyException b)
       | _ -> failwith "Command not recognized";;
 
 
+
+semtry(Let ((Ide "abs"), 
+Fun( Ide "a",
+        Try( Ifthenelse(
+        Eq ((Val (Ide "a")), Eint 0), Raise(Ide "Lo zero non ha segno"), Eint 5),
+              (Ide "Lo zero non ha segno"),
+Eint 10)),
+	    Appl(Val(Ide "abs"), Raise (Ide "Muori")))) emptyenv;;
+
+
+let b = Try(
+  Let(Ide "prova", 
+           Fun(Ide "x", 
+                   (Ifthenelse
+                      ( Not (Eq (Val(Ide "x"), Empty)),
+                        Eint 4, 
+                        (Raise (Ide "Funziona cosi'"))) 
+                     )
+              ),
+      Appl(Val(Ide "prova"), Empty))
+    ,(Ide "Funziona cosi'"),  
+  True);;
+
+semtry b emptyenv;;
+
+semtry(Eq(Epair(Eint 2,Echar 'a'),Epair(Eint 2, Echar 'c'))) emptyenv;;
+
+semtry(
+  Try(    (Try (
+            (match semtry (Val(Ide "x")) emptyenv with
+               Char 'c' -> Raise (Ide "ecc1")
+            | _ -> Raise (Ide "ecc2")
+            ),
+            Ide "ecc2",
+            Eint 3)),
+           Ide "ecc1",
+           Eint 4)
+)          
+(bind (emptyenv,(Ide "x"), Char 'c')) ;;
