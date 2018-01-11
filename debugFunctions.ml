@@ -1,4 +1,4 @@
-#use "typing--gruppo--.ml";;
+#use "typingg10.ml";;
 
 
 (* Input: espressione
@@ -27,17 +27,21 @@ typeinf (And(Less(True, Eint 3),False));;
 (* Assert per Eq *)
 typeinf (Eq(Eint 2, Eint 3));;
 typeinf (Eq(True, False));;
-typeinf (Eq(True, Eint 1));; (* non va *)
-typeinf (Eq(False, Eint 2));; (* non va *)
-(* Assert per Pair *)
-typeinf (Pair(Eint 2, True));;
-typeinf (Pair(True,False));;
-typeinf (Pair(Eint 2, Eint 3));;
-typeinf (Pair(Pair (Eint 2, And(True,False)),True));;
+typeinf (Eq(Echar 'c', Echar 'c'));;
+typeinf (Eq(Echar 'c', Echar 'd'));;
+typeinf (Eq(Echar 'c', True));;
+typeinf (Eq(Echar 'c', Eint 2));;
+typeinf (Eq(True, Eint 1));; 
+typeinf (Eq(False, Eint 2));;
+(* Assert per Epair *)
+typeinf (Epair(Eint 2, True));;
+typeinf (Epair(True,False));;
+typeinf (Epair(Eint 2, Eint 3));;
+typeinf (Epair(Epair (Eint 2, And(True,False)),True));;
 (* Assert per Fst *)
-typeinf (Sum(Fst(Pair(Eint 2,True)),Eint 4));;
-typeinf (Sum(Fst(Pair(True,False)),Eint 5));;
+typeinf (Sum(Fst(Epair(Eint 2,True)),Eint 4));;
+typeinf (Sum(Fst(Epair(True,False)),Eint 5));;
 (* Assert per Snd *)
-typeinf (Sum(Snd(Pair(True,Eint 2)),Eint 5));;
+typeinf (Sum(Snd(Epair(True,Eint 2)),Eint 5));;
 
 (* TODO testare tutto il resto *)

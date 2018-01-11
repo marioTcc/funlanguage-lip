@@ -90,7 +90,7 @@ let rec subst newVal oldVal constrs =
     | TFun(t1,t2) -> TFun(substValue newVal oldVal t1, substValue newVal oldVal t2)
     | TList [t] -> (match t with
           TVar oldVal -> TList [newVal]
-        | _ -> substValue newVal oldVal t)
+        | _ -> TList [substValue newVal oldVal t])
     | _ -> failwith "Errore nella sostituzione"
 in List.fold_right (fun x acc -> (substValue newVal oldVal (fst x), substValue newVal oldVal (snd x))::acc) 
                                 constrs [];;
@@ -127,7 +127,7 @@ let rec solveConstraints constrs = match constrs with
   | hd::tl as constrsList -> match fst hd, snd hd with
          (* Regola 1 *)
          (TInt,TInt) | (TBool,TBool) | (TChar,TChar) -> solveConstraints tl
-
+       | (TVar n1, TVar n2) -> if n1 = n2 then solveConstraints tl else solveConstraints tl@[hd]
          (* Regola 2 *)
        | (TVar (_ as name), _) -> if not (isContainedInExpr name (snd hd)) 
                           then (fst hd, snd hd)::solveConstraints (subst (snd hd) name tl)
@@ -135,7 +135,6 @@ let rec solveConstraints constrs = match constrs with
        | (_, TVar (_ as name)) -> if not (isContainedInExpr name (fst hd)) 
                           then (fst hd, snd hd)::solveConstraints (subst (fst hd) name tl)
                           else failwith "Errore occorrenza tipo"
-
           (* Regola 3 *)
        | (TFun(a,b), TFun(c,d)) | (TPair(a,b),TPair(c,d)) -> solveConstraints ((a,c)::(b,d)::tl)
        | (TList [a], TList [b]) -> solveConstraints ((a,b)::tl)
@@ -212,10 +211,10 @@ let rec getConstraints expr amb = match expr with
         in (lType, (lConstraints))
   | Cons(t1,t2) ->
       let ((t1Type, t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1 amb, getConstraints t2 amb)
-        in (TList [t1Type], ([(t1Type,t1Type)]@
-                       [(t2Type, TList [t1Type])])@
+        in (TList [t1Type], ([(t2Type, TList [t1Type])])@
                        (t1Constrs)@
-                       (t2Constrs))
+                       (t2Constrs)@
+                       [(t1Type,t1Type)])
   | Empty -> (TList [newvar()], [])
 (* Inferenza per if-then-else *)
   | Ifthenelse(b,t1,t2) ->
@@ -261,4 +260,11 @@ let rec getConstraints expr amb = match expr with
 let rec typeinf expr = let exprConstraints = getConstraints expr newtypenv in
 let unifiedConstrs = solveConstraints (snd exprConstraints) in 
   (if unifiedConstrs = [] then fst exprConstraints else
-     solveRemainingConstrs  (fst exprConstraints) unifiedConstrs);; 
+     solveRemainingConstrs  (fst exprConstraints) unifiedConstrs);;
+
+
+
+
+solveConstraints (snd(getConstraints (Fun( Ide "x", Cons(Val (Ide "x"), Cons(Val (Ide "x"), Empty))       )) newtypenv));;
+typeinf (Fun( Ide "x", Cons(Val (Ide "x"), Cons(Val (Ide "x"), Empty))       ));;
+typeinf (Fun (Ide "x", Empty));;

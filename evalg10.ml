@@ -38,11 +38,10 @@ type eval =
 | List of eval list
 | Pair of eval * eval
 | Closure of exp * env
-
 and
-
 env = ide -> eval;;
 
+(* Ambiente di esecuzione *)
 let emptyenv = function (i:ide) -> Undefined;;
 let applyenv ((r:env),(x:ide))= r x ;;
 let bind (ambiente, nome, ev) =
@@ -248,10 +247,3 @@ let rec sem (e:exp) (amb:env) =
                         |  _ -> failwith "Funzione non valida")
       | _ -> failwith "Command not recognized";;
 
-sem(Fst(Epair(Eint(48),Eint(96))))(emptyenv);;
-sem(Fst(Epair(Echar('d'),Echar('m'))))(emptyenv);;
-sem(Fst(Epair(False,True)))(emptyenv);;
-sem(Eq(Epair(Eint 2,Echar 'a'),Epair(Eint 2,Echar 'a'))) emptyenv;;
-sem(Eq(Epair(Eint 2,Echar 's'),Epair(Eint 2,Echar 'a'))) emptyenv;;
-sem(Eq(Cons(Eint 2,Empty),Cons(Eint 3,Empty))) emptyenv;;
-sem(Eq(Cons(Eint 1,Cons(Eint 2,Empty)),Cons(Eint 1,Cons(Eint 2,Empty)))) emptyenv;;
