@@ -1,4 +1,6 @@
 
+
+
 (* Identificatori (nomi di variabile) *)
 type  ide = Ide of string;;
 
@@ -43,16 +45,13 @@ type exp =
 
 (* Definizione ambiente per i tipi *)
 let newtypenv = ([]:(ide*etype)list) ;;
-
 (*funzione appoggio confronto ide*)
 let confrontIde (a:ide) (b:ide) = match a,b with
 Ide x , Ide y -> if (x=y) then true else false;;
-
 let rec applytypenv (l:(ide*etype)list) s = match l with
 [] -> failwith "listaVuota"
   |(i,e)::[] -> if (confrontIde i s) then e else failwith "nonPresente"
   |(i,e)::l1 -> if (confrontIde i s) then e else applytypenv l1 s ;;
-
 let rec bindtyp (l:(ide*etype)list) ni ne = match l with 
 [] -> (ni,ne)::[]
   |(i,e)::[] -> if (confrontIde i ni) then (i,ne)::[] 
@@ -88,9 +87,7 @@ let rec subst newVal oldVal constrs =
     | TVar value -> if value = oldVal then newVal else TVar value
     | TPair(t1,t2) -> TPair(substValue newVal oldVal t1, substValue newVal oldVal t2)
     | TFun(t1,t2) -> TFun(substValue newVal oldVal t1, substValue newVal oldVal t2)
-    | TList [t] -> (match t with
-          TVar oldVal -> TList [newVal]
-        | _ -> TList [substValue newVal oldVal t])
+    | TList [t] -> TList [substValue newVal oldVal t]
     | _ -> failwith "Errore nella sostituzione"
 in List.fold_right (fun x acc -> (substValue newVal oldVal (fst x), substValue newVal oldVal (snd x))::acc) 
                                 constrs [];;
@@ -204,17 +201,17 @@ let rec getConstraints expr amb = match expr with
               | _ -> failwith "L espressione non e una lista")
 (* Inferenza per il tipo lista !! potrebbe servire modificarli !!! TODO *)
   | Head l -> 
-      let (lType, lConstraints) = getConstraints l  amb
+      let (TList [lType], lConstraints) = getConstraints l  amb
         in (lType, ([(TList [lType], TList [lType])]@lConstraints)) 
   | Tail l ->
       let (lType,lConstraints) = getConstraints l amb
         in (lType, (lConstraints))
   | Cons(t1,t2) ->
       let ((t1Type, t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1 amb, getConstraints t2 amb)
-        in (TList [t1Type], ([(t2Type, TList [t1Type])])@
-                       (t1Constrs)@
-                       (t2Constrs)@
-                       [(t1Type,t1Type)])
+        in (TList [t1Type], ([(t1Type,t1Type)]@
+                             [(t2Type, TList [t1Type])])@
+                               (t1Constrs)@
+                               (t2Constrs))
   | Empty -> (TList [newvar()], [])
 (* Inferenza per if-then-else *)
   | Ifthenelse(b,t1,t2) ->
@@ -225,7 +222,7 @@ let rec getConstraints expr amb = match expr with
                       (t1Constrs)@
                       (t2Constrs)))
 (* Inferenza per Let *)
-  | Let (name,t1,t2) -> (* TODO verificare se è sbagliata nel foglio; questa funge *)
+  | Let (name,t1,t2) -> 
       let a = newvar() in
         let (t1Type,t1Constrs) = (getConstraints t1 amb)
           in let (t2Type,t2Constrs) = (getConstraints t2 (bindtyp amb name a))
@@ -246,12 +243,12 @@ let rec getConstraints expr amb = match expr with
                   (t1Constrs)@
                   (t2Constrs)))
 (* Inferenza per Rec *)
-  | Rec(y, Fun(x,t)) -> (* non funge *)
+  | Rec(y, Fun(x,t)) -> 
       let a = newvar() in
       let (tType, tConstrs) = getConstraints (Fun(x,t)) (bindtyp amb y a)
       in match tType with
           TFun(xType,termType) -> (TFun(xType,termType), ([(TFun(xType,termType),a)]@tConstrs))
-          | _ -> failwith "Il secondo termine non è una funzione"
+          | _ -> failwith "Il secondo termine non è una funzione"
 (* Rompere solo in caso di incendio *)
   | _ -> failwith "Tipo non inferibile (getConstraints)";;
 
@@ -259,12 +256,15 @@ let rec getConstraints expr amb = match expr with
 (* Se il tipo e inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
 let rec typeinf expr = let exprConstraints = getConstraints expr newtypenv in
 let unifiedConstrs = solveConstraints (snd exprConstraints) in 
-  (if unifiedConstrs = [] then fst exprConstraints else
+(if unifiedConstrs = [] then fst exprConstraints else
      solveRemainingConstrs  (fst exprConstraints) unifiedConstrs);;
 
 
 
+(*
+typeinf (Eq(Appl(Fun(Ide "x", Val( Ide "x")), Eint 2), Appl(Rec(Ide "x", Fun(Ide "y", Sum(Val(Ide "y"), Eint 2))), Eint 2)));;
+typeinf (Eq(Appl(Fun(Ide "x", Val( Ide "x")), Eint 2), Eint 3));;
+typeinf (Eq(Appl(Fun(Ide "x", Val( Ide "x")), Eint 2), 
+            Appl(Rec(Ide "x", Fun(Ide "y", Val(Ide "y"))), Eint 2)));;
+*)
 
-solveConstraints (snd(getConstraints (Fun( Ide "x", Cons(Val (Ide "x"), Cons(Val (Ide "x"), Empty))       )) newtypenv));;
-typeinf (Fun( Ide "x", Cons(Val (Ide "x"), Cons(Val (Ide "x"), Empty))       ));;
-typeinf (Fun (Ide "x", Empty));;

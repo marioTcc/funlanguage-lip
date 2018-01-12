@@ -59,12 +59,6 @@ let typeChecker (tipo,value) =
     | "char" -> (match value with 
                      Char(x) -> true
                   | _ -> false)
-    | "list" -> (match value with
-                     List(x) -> true
-                  | _ -> false)
-    | "pair" -> (match value with
-                     Pair(x,y) -> true
-                  | _ -> false)
     | _ -> failwith ("Invalid type");;
 
 let eq (x,y) =
@@ -142,7 +136,7 @@ let unaryNegation x =
 
 let pair (x,y) = Pair(x,y);;
 
-let cons a b = match b with
+let cons a b = match a,b with
     (List t) -> List (a::t)
    |_ ->failwith"";;
 
@@ -247,3 +241,93 @@ let rec sem (e:exp) (amb:env) =
                         |  _ -> failwith "Funzione non valida")
       | _ -> failwith "Command not recognized";;
 
+
+
+
+
+(* La prima di ognuno e`corretta, le altre no *)
+let giuste = 
+  [Eint 2;
+   Echar 'c'; 
+   True;
+   False;
+   Empty;
+   Sum(Eint 2, Eint 3);
+   Diff(Eint 2, Eint 3);
+   Times(Eint 2, Eint 3); 
+   And(True, False);
+   Or(False, True); 
+   Not(True);
+   Less(Eint 2, Eint 3);
+   Less(Sum(Eint 2, Eint 3), Eint 3);
+   Less(Diff(Eint 2, Eint 3), Eint 6);
+   Eq(Eint 2, Eint 4);
+   Eq(Eint 3, Eint 3);
+   Eq(Echar 'c', Echar 'd');
+   Eq(True, False);
+   Cons(Eint 3, Empty); 
+   Cons(Echar 'c', Empty); 
+   Cons(True, Empty);
+   Cons( Eint 2, Cons(Eint 3, Empty));
+   Cons(True, Cons(False, Empty));
+   Cons(Echar 'c', Cons(Echar 'd', Empty));
+   Head(Cons(Eint 3, Empty));
+   Head(Cons(Echar 'c', Empty));
+   Head(Cons(True, Empty)); 
+   Head(Cons( Eint 2, Cons(Eint 3, Empty)));
+   Head(Cons(True, Cons(False, Empty)));
+   Head(Cons(Echar 'c', Cons(Echar 'd', Empty)));
+   Tail(Empty); Tail(Cons(Eint 3, Empty)); Tail(Cons(Echar 'c', Empty));
+	Tail(Cons(True, Empty)); Tail(Cons( Eint 2, Cons(Eint 3, Empty)));
+	Tail(Cons(True, Cons(False, Empty))); Tail(Cons(Echar 'c', Cons(Echar 'd', Empty)));
+   (* Operazioni su coppie *)
+   Epair(Eint 2, Eint 3); Epair(Echar 'c', Echar 'd'); Epair(True, False);
+	Epair(Sum(Eint 2, Eint 3), Or(True, False)); 
+   Fst(Epair(Eint 2, Eint 3)); Fst(Epair(Echar 'c', Echar 'd')); 
+	Fst(Epair(True, False)); Fst(Epair(Sum(Eint 2, Eint 3), Or(True, False)));
+   Snd(Epair(Eint 2, Eint 3)); Snd(Epair(Echar 'c', Echar 'd')); 
+	Snd(Epair(True, False)); Snd(Epair(Sum(Eint 2, Eint 3), Or(True, False)));
+   (* Inferenza per Ifthenelse *)
+   Ifthenelse(True, Sum(Eint 1, Eint 2), Diff(Eint 11, Eint 3));
+	Ifthenelse(False, True, False);
+	Ifthenelse(True, Echar 'c', Echar 'd');
+   (* Inferenza per Let *)
+   Let(Ide "x", Eint 2, Sum(Val(Ide "x"),Eint 3));
+   Let(Ide "x", True, And(Val(Ide "x"), False));
+   Let(Ide "x", Echar 'c', Ifthenelse(Eq(Val(Ide "x"), Echar 'c'), Echar 'd', Echar 'f'));
+   Let(Ide "x", Fun(Ide "y", Sum(Val(Ide "y"), Eint 3)), Appl(Val (Ide "x"), Eint 2));
+   (* Inferenza per Fun *)
+   Fun(Ide "x", Val (Ide "x"));
+   Fun(Ide "x", Sum(Val(Ide "x"), Eint 2));
+   Fun(Ide "x", And(Val(Ide "x"), True));
+   Fun(Ide "x", Ifthenelse(Eq(Val(Ide "x"), Echar 'c'), Echar 'd', Echar 'f'));
+   Fun(Ide "x", Appl(Fun(Ide "y", Val (Ide "y")), Val( Ide "x")));
+   (* Inferenza per Appl *)
+   Appl(Fun(Ide "x", Val (Ide "x")), Eint 2);
+   Appl(Fun(Ide "x", Val (Ide "x")), True);
+   Appl(Fun(Ide "x", Val (Ide "x")), Echar 'c');
+   (* Inferenza per Rec *)
+   Rec(Ide "y", (Fun(Ide "x", Sum(Val (Ide "x"), Appl(Val (Ide "y"), Diff(Val (Ide "x"), Eint 1))))));
+   Rec(Ide "y", (Fun(Ide "x", And(Val (Ide "x"), Appl(Val (Ide "y"), False)))))
+];;
+	
+
+
+let sbagliate = [];;
+
+let testGiuste l = List.fold_right (fun x acc -> 
+      try ((sem x emptyenv)::(fst acc), (snd acc)+1) with _ -> 
+        [(List.nth (fst acc) (List.length (fst acc) - 1))], (snd acc) )
+  l ([Undefined], 0);;
+testGiuste giuste;;
+
+
+let testSbagliate l = let resList = List.fold_right 
+  (fun x acc -> 
+     (try sem x emptyenv with _ -> Undefined)::acc     ) l []
+in List.fold_right 
+     (fun x acc -> if acc = true then
+        match x with Undefined -> true
+          | _ -> false
+      else false) resList true;;
+testSbagliate sbagliate;;

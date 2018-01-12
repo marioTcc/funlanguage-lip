@@ -1,8 +1,6 @@
   
 type ide = Ide of string;;
 
-exception MyException of ide;;
-
 type exp =
 Val of ide
 | Eint of int
@@ -50,6 +48,15 @@ let emptyenv = function (i:ide) -> Undefined;;
 let applyenv ((r:env),(x:ide))= r x ;;
 let bind (ambiente, nome, ev) =
  function lu -> if lu = nome then ev else applyenv (ambiente, lu);;
+
+(* Stack delle eccezioni *)
+let emptyStack = ([]:(ide*exp)list);;
+let bindInStack (name:ide) (expr:exp) (stack:(ide*exp)list) = (name,expr)::stack;;
+let rec getFromStack (name:ide) (stack:(ide*exp)list) = match stack with
+    [] -> failwith "Eccezione non presente nello stack"
+  | hd::tl -> if fst hd = name then (snd hd, tl) else getFromStack name tl;;
+
+
 
 let typeChecker (tipo,value) =
   match tipo with
@@ -207,7 +214,8 @@ let rec substRec newVal oldVal expr = match expr with
   | Appl(a,b) -> Appl(substRec newVal oldVal a, substRec newVal oldVal b)
   | _ -> failwith "Errore nella sostituzione Rec";;
 
-let rec semtry (e:exp) (amb:env) =
+let semtry (e:exp) (amb:env) =
+  let rec sem e amb stack = 
   match e with
       | Val x -> applyenv (amb, x)
       | Eint(n) -> Int(n)
@@ -215,79 +223,74 @@ let rec semtry (e:exp) (amb:env) =
       | True -> Bool(true)
       | False -> Bool(false)
       | Empty -> List []
-      | Cons(a,b) -> cons (semtry a amb) (semtry b amb)
-      | Head a -> head (semtry a amb) 
-      | Tail a -> tail  (semtry a amb)
-      | Epair(a,b) -> pair(semtry a amb,semtry b amb)
-      | Fst(Epair(a,b)) -> semtry a amb
-      | Snd(Epair(a,b)) -> semtry b amb
-      | Eq(a,b) -> eq( (semtry a amb),(semtry b amb) )
-      | Times(a,b) -> times( (semtry a amb),(semtry b amb) )
-      | Sum(a,b) -> sum( (semtry a amb),(semtry b amb) )
-      | Diff(a,b)  -> diff( (semtry a amb),(semtry b amb) )
-      | And(a,b) -> logicAnd( (semtry a amb),(semtry b amb) )
-      | Or(a,b) ->  logicOr( (semtry a amb),(semtry b amb) )
-      | Less(a,b) -> less( semtry a amb,semtry b amb)
-      | Not(a) -> unaryNegation( (semtry a amb) )
+      | Cons(a,b) -> cons (sem a amb stack) (sem b amb stack)
+      | Head a -> head (sem a amb stack) 
+      | Tail a -> tail  (sem a amb stack)
+      | Epair(a,b) -> pair(sem a amb stack,sem b amb stack)
+      | Fst(Epair(a,b)) -> sem a amb stack
+      | Snd(Epair(a,b)) -> sem b amb stack
+      | Eq(a,b) -> eq( (sem a amb stack),(sem b amb stack) )
+      | Times(a,b) -> times( (sem a amb stack),(sem b amb stack) )
+      | Sum(a,b) -> sum( (sem a amb stack),(sem b amb stack) )
+      | Diff(a,b)  -> diff( (sem a amb stack),(sem b amb stack) )
+      | And(a,b) -> logicAnd( (sem a amb stack),(sem b amb stack) )
+      | Or(a,b) ->  logicOr( (sem a amb stack),(sem b amb stack) )
+      | Less(a,b) -> less( sem a amb stack,sem b amb stack)
+      | Not(a) -> unaryNegation( (sem a amb stack) )
       | Ifthenelse(a,b,c) ->
-	 let g = semtry a amb in
+	 let g = sem a amb stack in
 	 if typeChecker("bool",g) then
              (if g = Bool(true) 
-              then semtry b amb else semtry c amb)
+              then sem b amb stack else sem c amb stack)
            else failwith ("Condizione booleana non rispettata")
-      | Let(a,b,c) -> semtry c (bind (amb,a,(semtry b amb)))
+      | Let(a,b,c) -> sem c (bind (amb,a,(sem b amb stack))) stack
       | Fun(a,b) -> Closure( Fun(a,b), calcFV b amb emptyenv) 
       | Rec(a,(Fun(x,t))) -> 
           let tSubst = substRec (Rec(a,Fun(x,t))) a t in
             Closure(Fun(x,tSubst), calcFV tSubst amb emptyenv)
       | Appl(a,b) ->
-	 (match semtry a amb with
+	 (match sem a amb stack with
            Closure(Fun(parametro,corpo), amb_locale) ->
-             semtry corpo (bind (amb_locale, parametro, semtry b amb))
+             sem corpo (bind (amb_locale, parametro, sem b amb stack)) stack
                         |  _ -> failwith "Funzione non valida")
-      | Try(a,b,c) -> (try(semtry a (calcFV a amb emptyenv)) with 
-                          |MyException ecc -> if ecc=b then semtry c amb else 
-                             failwith "nothing to do")
-      | Raise b -> raise (MyException b)
-      | _ -> failwith "Command not recognized";;
+      | Try(a,b,c) -> sem a amb (bindInStack b c stack)
+      | Raise b -> let (handler, newStack) = getFromStack b stack
+                in sem handler amb newStack
+      | _ -> failwith "Command not recognized"
+
+  in sem e amb emptyStack;;
 
 
 
-semtry(Let ((Ide "abs"), 
-Fun( Ide "a",
-        Try( Ifthenelse(
-        Eq ((Val (Ide "a")), Eint 0), Raise(Ide "Lo zero non ha segno"), Eint 5),
-              (Ide "Lo zero non ha segno"),
-Eint 10)),
-	    Appl(Val(Ide "abs"), Raise (Ide "Muori")))) emptyenv;;
-
-
-let b = Try(
-  Let(Ide "prova", 
-           Fun(Ide "x", 
-                   (Ifthenelse
-                      ( Not (Eq (Val(Ide "x"), Empty)),
-                        Eint 4, 
-                        (Raise (Ide "Funziona cosi'"))) 
-                     )
-              ),
-      Appl(Val(Ide "prova"), Empty))
-    ,(Ide "Funziona cosi'"),  
-  True);;
-
-semtry b emptyenv;;
-
-semtry(Eq(Epair(Eint 2,Echar 'a'),Epair(Eint 2, Echar 'c'))) emptyenv;;
 
 semtry(
-  Try(    (Try (
-            (match semtry (Val(Ide "x")) emptyenv with
-               Char 'c' -> Raise (Ide "ecc1")
-            | _ -> Raise (Ide "ecc2")
-            ),
+  Try(    
+    (Try (
+       (Ifthenelse( Eq(Val (Ide "x"), Echar 'c'),
+        Raise (Ide "ecc1"),
+        Raise (Ide "ecc2")
+              )),
             Ide "ecc2",
             Eint 3)),
            Ide "ecc1",
            Eint 4)
-)          
-(bind (emptyenv,(Ide "x"), Char 'c')) ;;
+)
+(bind (emptyenv,(Ide "x"), Char 'c'));;
+
+
+
+semtry(
+  Try(    
+    (Try (
+       (Ifthenelse( Eq(Val (Ide "x"), Echar 'c'),
+        Raise (Ide "ecc1"),
+        Raise (Ide "ecc2")
+              )),
+            Ide "ecc2",
+            Eint 3)),
+           Ide "ecc1",
+           Try(Raise (Ide "ecc2"), Ide "ecc3", Eint 6)
+
+))
+(bind (emptyenv,(Ide "x"), Char 'c'));;
+
