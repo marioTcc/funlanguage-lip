@@ -136,7 +136,7 @@ let unaryNegation x =
 
 let pair (x,y) = Pair(x,y);;
 
-let cons a b = match a,b with
+let cons a b = match b with
     (List t) -> List (a::t)
    |_ ->failwith"";;
 
@@ -310,8 +310,6 @@ let giuste =
    Rec(Ide "y", (Fun(Ide "x", Sum(Val (Ide "x"), Appl(Val (Ide "y"), Diff(Val (Ide "x"), Eint 1))))));
    Rec(Ide "y", (Fun(Ide "x", And(Val (Ide "x"), Appl(Val (Ide "y"), False)))))
 ];;
-	
-
 
 let sbagliate = [];;
 
@@ -331,3 +329,5 @@ in List.fold_right
           | _ -> false
       else false) resList true;;
 testSbagliate sbagliate;;
+
+
