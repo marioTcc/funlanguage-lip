@@ -278,19 +278,3 @@ semtry(
 (bind (emptyenv,(Ide "x"), Char 'c'));;
 
 
-
-semtry(
-  Try(    
-    (Try (
-       (Ifthenelse( Eq(Val (Ide "x"), Echar 'c'),
-        Raise (Ide "ecc1"),
-        Raise (Ide "ecc2")
-              )),
-            Ide "ecc2",
-            Eint 3)),
-           Ide "ecc1",
-           Try(Raise (Ide "ecc2"), Ide "ecc3", Eint 6)
-
-))
-(bind (emptyenv,(Ide "x"), Char 'c'));;
-
