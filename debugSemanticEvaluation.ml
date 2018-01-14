@@ -159,5 +159,3 @@ testGiuste giuste;;  (* verifica se il risultato di typeinf è quello atteso *)
 
 testSbagliate sbagliate;; (* verifica che nessuna espressione "sbagliata" venga inferita come giusta *)
 
-
-

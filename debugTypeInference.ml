@@ -83,12 +83,23 @@ let giuste =
    Rec(Ide "y", (Fun(Ide "x", And(Val (Ide "x"), Appl(Val (Ide "y"), False))))), TFun(TBool,TBool)
 ];;
 	
+(*
+typeinf (Eq(Appl(Fun(Ide "x", Val( Ide "x")), Eint 2), Appl(Rec(Ide "x", Fun(Ide "y", Sum(Val(Ide "y"), Eint 2))), Eint 2)));;
+typeinf (Eq(Appl(Fun(Ide "x", Val( Ide "x")), Eint 2), Eint 3));;
+typeinf (Eq(Appl(Fun(Ide "x", Val( Ide "x")), Eint 2), 
+            Appl(Rec(Ide "x", Fun(Ide "y", Val(Ide "y"))), Eint 2)));;
+*)
+
+
 let sbagliate = [
-Eq(Epair(Eint 2, Echar 'c'),Epair(Echar 'd', Eint 3));
+  Sum(True,False);
+  Cons(Empty, Cons(Eint 2, Empty));  
+  Eq(Epair(Eint 2, Echar 'c'),Epair(Echar 'd', Eint 3));
   Eq(Cons(Eint 2, Empty), Cons(Echar 'c', Empty));
   Eq(Ifthenelse(True, Echar 'c', Echar 'd'), Ifthenelse(False, Eint 3, Eint 4));
   Eq(Let(Ide "x", Eint 3, Sum(Val(Ide "x"), Eint 3)), Echar 'c');
-Cons(Cons(Fun(Ide "x", And(Val(Ide "x"), True)), Empty), Cons(Cons(Fun(Ide "x", Sum(Val(Ide"x"), Eint 3)), Empty), Empty));
+  Cons(Cons(Fun(Ide "x", And(Val(Ide "x"), True)), Empty), Cons(Cons(Fun(Ide "x", Sum(Val(Ide"x"), Eint 3)), Empty), Empty));
+
 ];;
 
 
@@ -132,12 +143,19 @@ let testGiuste l =
 
 
 let testSbagliate l = 
-let check l = List.fold_left 
-  (fun acc x -> if not (snd acc) then 
-     (try isValid(fst acc, typeinf x) with _ -> ((fst acc) + 1, false))
-   else (fst acc, true)) (0,false) l
-in let result = check l
-in if not (snd result) then "Tutto OK" else "La "^string_of_int (fst result)^" non scoppia come dovrebbe";;
+  let check l = List.fold_left 
+    (fun acc x ->
+       if (snd acc) then 
+         (try (fst (isValid(fst acc, typeinf x)), 
+               not(snd (isValid(fst acc, typeinf x)) ))
+          with _ -> ((fst acc) + 1, true))
+       else acc) (0, true) l
+  in let result = check l
+in if (snd result) then "Tutto OK" else "La "^string_of_int (fst result)^" non scoppia come dovrebbe";;
+
+
+
+
 
 
 (* AREA TEST *)
