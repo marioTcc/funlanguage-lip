@@ -1,5 +1,4 @@
 
-let filename = "<Inserire nome file eval qui>";;
 #use "evalg10.ml";;
 
 (* Vari tests *)
@@ -26,7 +25,7 @@ let giuste =
    Eq(Epair(Eint 2, Echar 'c'), Epair(Eint 3214, Echar 'd')), Bool false;
    Eq(Cons(Eint 3, Empty), Cons(Eint 3, Empty)), Bool true;
    Eq(Cons(Eint 2, Empty), Cons(Eint 3, Empty)), Bool false;
-   Eq(Let(Ide "x", Echar 'c', Val (Ide "x")), Echar 'c'), Char 'c'; 
+   Eq(Let(Ide "x", Echar 'c', Val (Ide "x")), Echar 'c'), Bool true; 
    Eq(Let(Ide "x", Eint 3, Sum(Val(Ide "x"), Eint 3)), Eint 3), Bool false;
    Eq(Ifthenelse(True, Eint 2, Eint 3), Ifthenelse(False, Eint 3, Eint 4)), Bool false;
    Cons(Eint 3, Empty), List [Int 3]; 
@@ -35,7 +34,7 @@ let giuste =
    Cons(Eint 2, Cons(Eint 3, Empty)), List [Int 2; Int 3];
    Cons(True, Cons(False, Empty)), List [Bool true; Bool false];
    Cons(Echar 'c', Cons(Echar 'd', Empty)), List [Char 'c'; Char 'd'];
-   Cons(Cons(Eint 2, Empty), Cons(Cons(Eint 3, Empty), Empty)), List [List [Int 2]; List [Int 3]; List []];
+   Cons(Cons(Eint 2, Empty), Cons(Cons(Eint 3, Empty), Empty)), List [List [Int 2]; List [Int 3]];
    Cons(Cons(Let(Ide "x", Echar 'c', Val (Ide "x")), Empty), Cons(Empty, Empty)), List [List[Char 'c']; List[]];
 (*   Cons(Cons(Fun(Ide "x", Val(Ide "x")), Empty), Cons(Cons(Fun(Ide "x", Sum(Val(Ide"x"), Eint 3)), Empty), Empty)), List [Closure(;*) 
    Head(Cons(Eint 3, Empty)), Int 3; 
@@ -97,7 +96,7 @@ let sbagliate = [
 (*---------------------------------------------------------------------------
 Test per typeinf
 -------------------------------------------------------------------------------*)
-  let isValid (index,expr) = match expr with 
+let isValid (index,expr) = match expr with 
       Int x -> (index+1, true)
     | Char x -> (index+1, true)
     | Bool x -> (index+1, true)
@@ -105,6 +104,8 @@ Test per typeinf
     | Pair(a,b) -> (index+1,true)
     | List _ -> (index+1,true)
     | _ -> (index,false);;
+
+
 
 
 let testGiusteScoppio l =
@@ -116,18 +117,19 @@ let check l =
   in if snd result then "Tutto OK" else "Scoppio in "^ string_of_int (fst result);;
 
 
-let testGiuste l = 
+
+
+(* Ignora Fun, non essendo necessaria quell'uguaglianza *)
+let testGiuste l =
   let rec testaGiustaExpr (expr,expected) = match expr, expected with
       (Int x, Int y) -> x = y
     | (Bool x, Bool y) -> x = y
     | (Char x,Char y) -> x = y
     | (Pair(a,b), Pair(c,d)) -> testaGiustaExpr (a,c) && testaGiustaExpr (b,d)
-   (* | (TFun(a,b), TFun(c,d)) -> testaGiustaExpr (a,c) && testaGiustaExpr (b,d)*)
-(*    | (List [a], List [b]) -> testGiustaExpr *)
- (*   | (TList [a], b) -> testaGiustaExpr (a,b)*)
     | (Closure(a,c),b) -> true
-    | List[_], _ -> true
-    | List [], _ -> true
+    | (List [List a as c], List[List b as d]) -> testaGiustaExpr (c,d)
+    | (List [], List []) -> true
+    | (List a, List b) -> a = b
     | _ -> false
   in let check = List.fold_left (fun acc x -> 
                       if snd acc && testaGiustaExpr ((sem (fst x) emptyenv),(snd x)) 
@@ -139,12 +141,13 @@ let testGiuste l =
 
 
 let testSbagliate l = 
-let check l = List.fold_left 
-  (fun acc x -> if not (snd acc) then 
-     (try isValid(fst acc, sem x emptyenv) with _ -> ((fst acc) + 1, false))
-   else (fst acc, true)) (0,false) l
-in let result = check l
+  let check l = List.fold_left 
+    (fun acc x -> if not (snd acc) then 
+       (try isValid(fst acc, sem x emptyenv) with _ -> ((fst acc) + 1, false))
+     else (fst acc, true)) (0,false) l
+  in let result = check l
 in if not (snd result) then "Tutto OK" else "La "^string_of_int (fst result)^" non scoppia come dovrebbe";;
+
 
 
 (* AREA TEST *)
