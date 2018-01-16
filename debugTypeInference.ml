@@ -31,9 +31,9 @@ let giuste =
    Eq(Ifthenelse(True, Eint 2, Eint 3), Ifthenelse(False, Eint 3, Eint 4)), TBool;
    Eq(Ifthenelse(True, Eint 1, Eint 3), Ifthenelse(False, Eint 3, Eint 5)), TBool;
    Eq(Ifthenelse(Eq(Sum(Eint 1,Eint 0),Eint 0),Less(Eint 2, Eint 5),And(True,Not(Not(True)))),Ifthenelse(Not(And(True,And(Or(False,False),True))),Head(Fst(Epair(Cons(True,Empty),Echar 'v'))), False)  ),TBool;
-   Eq(Appl(Fun(Ide "x", Val( Ide "x")), Eint 2), Appl(Rec(Ide "x", Fun(Ide "y", Sum(Val(Ide "y"), Eint 2))), Eint 2));
-   Eq(Appl(Fun(Ide "x", Val( Ide "x")), Eint 2), Eint 3);
-   Eq(Appl(Fun(Ide "x", Val( Ide "x")), Eint 2), Appl(Rec(Ide "x", Fun(Ide "y", Val(Ide "y"))), Eint 2));
+   Eq(Appl(Fun(Ide "x", Val( Ide "x")), Eint 2), Appl(Rec(Ide "x", Fun(Ide "y", Sum(Val(Ide "y"), Eint 2))), Eint 2)), TBool;
+   Eq(Appl(Fun(Ide "x", Val( Ide "x")), Eint 2), Eint 3), TBool;
+   Eq(Appl(Fun(Ide "x", Val( Ide "x")), Eint 2), Appl(Rec(Ide "x", Fun(Ide "y", Val(Ide "y"))), Eint 2)), TBool;
    Cons(Eint 3, Empty), TList[TInt]; 
    Cons(Echar 'c', Empty), TList[TChar]; 
    Cons(True, Empty), TList[TBool]; 
