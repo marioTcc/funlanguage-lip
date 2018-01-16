@@ -187,25 +187,29 @@ let rec getConstraints expr amb = match expr with
                                    [(t2Type,t2Type)]@
                                     (t1Constrs)@
                                     (t2Constrs)))
-  | Fst(Epair(a,b) as t) ->
+  | Fst(t) ->
       let (tType,tConstrs) = getConstraints t amb
         in (match tType with
             (TPair(typeL,typeR)) -> (typeL, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
                      (tConstrs)))
           | _ -> failwith "L espressione non e una coppia")
-  | Snd(Epair(a,b) as t) ->
+  | Snd(t) ->
       let (tType,tConstrs) = getConstraints t amb
         in (match tType with
                 (TPair(typeL,typeR)) -> (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
                      (tConstrs)))
-              | _ -> failwith "L espressione non e una lista")
-(* Inferenza per il tipo lista !! potrebbe servire modificarli !!! TODO *)
+              | _ -> failwith "L'espressione non e una lista")
+(* Inferenza per il tipo lista *)
   | Head l -> 
-      let (TList [lType], lConstraints) = getConstraints l  amb
-        in (lType, ([(TList [lType], TList [lType])]@lConstraints)) 
+      let (typeL, lConstraints) = getConstraints l  amb
+      in (match typeL with
+          (TList [lType]) -> (lType, ([(TList [lType], TList [lType])]@lConstraints))
+        | _ -> failwith "L'espressione non è una lista")
   | Tail l ->
       let (lType,lConstraints) = getConstraints l amb
-        in (lType, (lConstraints))
+        in (match lType with
+                (TList [typel]) -> (lType, (lConstraints))
+              | _ -> failwith "L'espressione non è una lista")
   | Cons(t1,t2) ->
       let ((t1Type, t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1 amb, getConstraints t2 amb)
         in (TList [t1Type], ([(t1Type,t1Type)]@
@@ -236,26 +240,34 @@ let rec getConstraints expr amb = match expr with
       in (TFun(a,tType), tConstrs)
 (* Inferenza per Appl *)
   | Appl(t1,t2) ->
-      let a = newvar() in
-      let (t1Type, t1Constrs) = getConstraints t1 amb in
-        let (t2Type, t2Constrs) = getConstraints t2 amb 
-        in (a, ([t1Type, TFun(t2Type,a)]@
-                  (t1Constrs)@
-                  (t2Constrs)))
+      let a = newvar()
+      in let (t1Type, t1Constrs) = getConstraints t1 amb 
+      in let (t2Type, t2Constrs) = getConstraints t2 amb 
+      in (a, ([t1Type, TFun(t2Type,a)]@
+                (t1Constrs)@
+                (t2Constrs)))
 (* Inferenza per Rec *)
-  | Rec(y, Fun(x,t)) -> 
+  | Rec(y,f) -> 
       let a = newvar() in
-      let (tType, tConstrs) = getConstraints (Fun(x,t)) (bindtyp amb y a)
+      let (tType, tConstrs) = getConstraints f (bindtyp amb y a)
       in match tType with
           TFun(xType,termType) -> (TFun(xType,termType), ([(TFun(xType,termType),a)]@tConstrs))
-          | _ -> failwith "Il secondo termine non è una funzione"
+          | _ -> failwith "Il secondo termine non è una funzione"
 (* Rompere solo in caso di incendio *)
-  | _ -> failwith "Tipo non inferibile (getConstraints)";;
+(*  | _ -> failwith "Tipo non inferibile (getConstraints)"*)
+and infer expr typeEnv =
+  let exprConstraints = getConstraints expr newtypenv in
+  let unifiedConstrs = solveConstraints (snd exprConstraints) in 
+    (if unifiedConstrs = [] then fst exprConstraints else
+       solveRemainingConstrs  (fst exprConstraints) unifiedConstrs);;
 
 
-(* Se il tipo e inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
-let rec typeinf expr = let exprConstraints = getConstraints expr newtypenv in
-let unifiedConstrs = solveConstraints (snd exprConstraints) in 
-(if unifiedConstrs = [] then fst exprConstraints else
-     solveRemainingConstrs  (fst exprConstraints) unifiedConstrs);;
 
+
+(* Se il tipo è inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
+let typeinf expr = infer expr newtypenv;;
+
+
+typeinf (Let(Ide "x",Fun(Ide "y", Eint 2), Appl(Val(Ide "x"), Eint 3)));;
+typeinf (Appl(True, Eint 2));;
+typeinf (Appl(Eint 2, Eint 3));;

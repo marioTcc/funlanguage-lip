@@ -421,9 +421,8 @@ let rec sem (e:exp) (amb:env) =
       | Empty -> List []
       | Cons(a,b) ->  (* DA RIVEDERE *)
           let result = cons(evaluate a amb typeEnv, evaluate b amb typeEnv)
-          in let isConsable expr = try (true, inferType e typeEnv) with _ -> (false, TVar "")
-          in let isConsableExpr = isConsable e
-          in if fst isConsableExpr then result else failwith "Type error in Cons"
+          in let isConsable = try (true, inferType e typeEnv) with _ -> (false, TVar "")
+          in if fst isConsable then result else failwith "Type error in Cons"
       | Head a -> head (evaluate a amb typeEnv) 
       | Tail a -> tail (evaluate a amb typeEnv) 
       | Epair(a,b) -> pair (evaluate a amb typeEnv, evaluate b amb typeEnv) (* OK *)
@@ -504,3 +503,6 @@ sem(Cons(Empty, Cons(Eint 1, Empty))) emptyenv;;
 
 []::([3524]::([1]::([]::[])));;
 []::[1;2];;
+sem (Cons(Empty,(Cons((Cons(Eint 3,Empty)),(Cons(Empty,( Cons((Cons (Eint 3,Empty)),(Cons (Empty,(Cons (Empty, Empty)))))))))))) emptyenv;;
+sem (Cons((Cons (Empty,Empty)),(Cons((Cons(Eint 3,Empty)),(Cons(Empty,( Cons((Cons (Eint 3,Empty)),(Cons (Empty,(Cons (Empty, Empty)))))))))))) emptyenv ;;
+sem (Cons((Cons(Echar 'c',Empty)),(Cons(Empty,( Cons((Cons (Eint 3,Empty)),(Cons (Empty,(Cons (Empty, Empty)))))))))) emptyenv ;;
