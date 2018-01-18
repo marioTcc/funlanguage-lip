@@ -360,10 +360,10 @@ let tail l = match l with
   | _ -> failwith "Espressione non valida in Tail";;
   
 
-(* TODO eccezione valore non in ambiente vecchio *)
+
 let rec calcFV expr amb_old amb_new = match expr with
     (* Se si incontra un identificatore *)
-    Val var -> bind (amb_new, var, applyenv (amb_old,var)) 
+    Val ((Ide v)as var) -> bind (amb_new, var, applyenv (amb_old,var)) 
       (* ----------------------------------------------*)
   | Eint a -> amb_new
   | Echar a -> amb_new
@@ -375,7 +375,10 @@ let rec calcFV expr amb_old amb_new = match expr with
   | Head t | Tail t | Fst t | Snd t | Not t -> calcFV t amb_old amb_new
   | Ifthenelse (t0,t1,t2) -> calcFV t0 amb_old (calcFV t1 amb_old (calcFV t2 amb_old amb_new))
   | Fun (x, t1) -> calcFV t1 amb_old (bind (amb_new, x, Undefined))
-  | Rec (y, (Fun(x,t) as t1)) -> calcFV t1 amb_old amb_new
+  | Rec (y, t1) -> 
+      (match t1 with
+          Fun(x,t) -> calcFV (Fun(x,t)) amb_old amb_new
+        | _ -> failwith "funzione non valida in calcFV:Rec")
   | Let (x, t1, t2) -> calcFV t1 amb_old 
       (calcFV t2 amb_old (bind (amb_new, x, Undefined)));;
 
