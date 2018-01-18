@@ -268,3 +268,214 @@ let unifiedConstrs = solveConstraints (snd exprConstraints) in
 
 
 
+
+(* Se il tipo e inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
+let rec inferType expr typeEnv = let exprConstraints = getConstraints expr typeEnv in
+let unifiedConstrs = solveConstraints (snd exprConstraints) in 
+(if unifiedConstrs = [] then fst exprConstraints else
+     solveRemainingConstrs  (fst exprConstraints) unifiedConstrs);;
+
+
+
+
+type eval =
+  Undefined
+| Int of int
+| Bool of bool
+| Char of char
+| List of eval list
+| Pair of eval * eval
+| Closure of exp * env
+and
+env = ide -> eval;;
+
+(* Ambiente di esecuzione *)
+let emptyenv = function (i:ide) -> Undefined;;
+let applyenv ((r:env),(x:ide))= r x ;;
+let bind (ambiente, nome, ev) =
+ function nuovo -> if nuovo = nome then ev else applyenv (ambiente, nuovo);;
+
+
+let eq (x,y) = match (x,y) with
+    (Int u, Int w) -> Bool(u = w)
+  | (Char u, Char w) -> Bool(u = w)
+  | (Bool u, Bool w ) -> Bool(u = w)
+  | (List u, List w) -> Bool(u = w)
+  | (Pair(u,v), Pair(w,z)) -> Bool(u = w && v = z)
+  | _ -> failwith "Espressione non valida in Eq";;
+  
+
+let less (x,y) = match (x,y) with
+    (Int u, Int w) -> Bool(u < w)
+  | _ -> failwith ("Espressione non valida in Less");;
+
+let sum (x,y) = match (x,y) with
+    (Int u, Int w) -> Int(u + w)
+  | _ -> failwith ("Espressione non valida in Sum");;
+
+let diff (x,y) = match (x,y) with
+    (Int u, Int w) -> Int(u - w)
+  | _ -> failwith ("Espressione non valida in Diff");;
+  
+
+let times (x,y) = match (x,y) with
+    (Int u, Int w) -> Int(u * w)
+  | _ -> failwith ("Espressione non valida in Times");;
+
+let logicAnd (x,y) = match (x,y) with
+    (Bool u, Bool w) -> Bool(u && w)
+  | _ -> failwith ("Espressione non valida in And");;
+
+let logicOr (x,y) = match (x,y) with
+    (Bool u, Bool w) -> Bool(u || w)
+  | _ -> failwith ("Espressione non valida in Or");;
+
+let unaryNegation x = match x with
+    Bool y -> Bool(not y)
+  | _ -> failwith ("Espressione non valida in not");;
+
+let pair (x,y) = Pair(x,y);;
+
+let cons (a,b) = match b with
+    (List t) -> List (a::t)
+   |_ -> failwith "Espressione non valida in Cons";;
+
+let head l = match l with
+    (List (hd::tl)) -> hd
+  | _ -> failwith "Espressione non valida in Head";;
+
+let tail l = match l with
+    (List (hd::tl)) -> List tl
+  | _ -> failwith "Espressione non valida in Tail";;
+  
+
+(* TODO eccezione valore non in ambiente vecchio *)
+let rec calcFV expr amb_old amb_new = match expr with
+    (* Se si incontra un identificatore *)
+    Val var -> bind (amb_new, var, applyenv (amb_old,var)) 
+      (* ----------------------------------------------*)
+  | Eint a -> amb_new
+  | Echar a -> amb_new
+  | True | False | Empty -> amb_new
+  | Sum(t1,t2) | Diff(t1,t2) | Times(t1,t2) 
+  | And(t1,t2) | Or(t1,t2) | Eq(t1,t2) | Less(t1,t2) 
+  | Cons(t1,t2) | Epair(t1,t2) | Appl(t1,t2) 
+      -> calcFV t1 amb_old (calcFV t2 amb_old amb_new)
+  | Head t | Tail t | Fst t | Snd t | Not t -> calcFV t amb_old amb_new
+  | Ifthenelse (t0,t1,t2) -> calcFV t0 amb_old (calcFV t1 amb_old (calcFV t2 amb_old amb_new))
+  | Fun (x, t1) -> calcFV t1 amb_old (bind (amb_new, x, Undefined))
+  | Rec (y, (Fun(x,t) as t1)) -> calcFV t1 amb_old amb_new
+  | Let (x, t1, t2) -> calcFV t1 amb_old 
+      (calcFV t2 amb_old (bind (amb_new, x, Undefined)));;
+
+
+let rec substRec newVal oldVal expr = match expr with
+(* Chiave d'uscita: sostiuisce il nome della funzione ricorsiva con la sua espressione *)
+    Val name -> if name = oldVal then newVal else Val name
+(* ------------------ *)
+  | True | False | Empty -> expr
+  | Echar x -> expr
+  | Eint x -> expr
+  | Sum(a,b) -> Sum(substRec newVal oldVal a, substRec newVal oldVal b)
+  | Diff(a,b) -> Diff(substRec newVal oldVal a, substRec newVal oldVal b)
+  | Times(a,b) -> Times(substRec newVal oldVal a, substRec newVal oldVal b)
+  | And(a,b) -> And(substRec newVal oldVal a, substRec newVal oldVal b)
+  | Or(a,b) -> Or(substRec newVal oldVal a, substRec newVal oldVal b)
+  | Eq(a,b) -> Eq(substRec newVal oldVal a, substRec newVal oldVal b)
+  | Less(a,b) -> Less(substRec newVal oldVal a, substRec newVal oldVal b)
+  | Cons(a,b) -> Cons(substRec newVal oldVal a, substRec newVal oldVal b)
+  | Epair(a,b) -> Epair(substRec newVal oldVal a, substRec newVal oldVal b)
+  | Not a -> Not(substRec newVal oldVal a)
+  | Head a -> Head(substRec newVal oldVal a)
+  | Tail a -> Tail(substRec newVal oldVal a)
+  | Fst a -> Fst(substRec newVal oldVal a)
+  | Snd a -> Snd(substRec newVal oldVal a)
+  | Ifthenelse(a,b,c) -> Ifthenelse(substRec newVal oldVal a, substRec newVal oldVal b, substRec newVal oldVal c)
+  | Let(a,b,c) -> Let(a, substRec newVal oldVal b, substRec newVal oldVal c)
+  | Fun(x,t) -> Fun(x, substRec newVal oldVal t)
+  | Appl(a,b) -> Appl(substRec newVal oldVal a, substRec newVal oldVal b)
+  | _ -> failwith "Errore nella sostituzione Rec";;
+
+
+let rec sem (e:exp) (amb:env) =
+  let rec evaluate (e:exp) (amb:env) (typeEnv:(ide*etype)list) =
+    match e with
+      | Val x -> applyenv (amb, x)
+      | Eint n -> Int n
+      | Echar b -> Char b
+      | True -> Bool true
+      | False -> Bool false
+      | Empty -> List []
+      | Cons(a,b) ->  (* DA RIVEDERE *)
+          let result = cons(evaluate a amb typeEnv, evaluate b amb typeEnv)
+          in let isConsable = try (true, inferType e typeEnv) with _ -> (false, TVar "")
+          in if fst isConsable then result else failwith "Type error in Cons"
+      | Head a -> head (evaluate a amb typeEnv) 
+      | Tail a -> tail (evaluate a amb typeEnv) 
+      | Epair(a,b) -> pair (evaluate a amb typeEnv, evaluate b amb typeEnv) (* OK *)
+      | Fst(Epair(a,b)) -> evaluate a amb typeEnv (* OK *)
+      | Snd(Epair(a,b)) -> evaluate b amb typeEnv (* OK *)
+      | Eq(a,b) -> (* OK *)
+          let typeCheck = (inferType a typeEnv, inferType b typeEnv)
+          in if fst typeCheck = snd typeCheck 
+            then eq(evaluate a amb typeEnv, evaluate b amb typeEnv)
+            else failwith "Type error in Eq"
+      | Times(a,b) -> (* OK *)
+          let typeCheck = (inferType a typeEnv, inferType b typeEnv)
+          in if fst typeCheck = snd typeCheck && fst typeCheck = TInt 
+            then times(evaluate a amb typeEnv, evaluate b amb typeEnv)
+            else failwith "Type error in Times"
+      | Sum(a,b) -> (* OK *)
+          let typeCheck = (inferType a typeEnv, inferType b typeEnv)
+          in if fst typeCheck = snd typeCheck && fst typeCheck = TInt
+            then sum(evaluate a amb typeEnv, evaluate b amb typeEnv)
+            else failwith "Type error in Sum"
+      | Diff(a,b) -> (* OK *)
+          let typeCheck = (inferType a typeEnv, inferType b typeEnv)
+          in if fst typeCheck = snd typeCheck && fst typeCheck = TInt
+            then diff(evaluate a amb typeEnv, evaluate b amb typeEnv)
+            else failwith "Type error in Diff"
+      | And(a,b) -> (* OK *)
+          let typeCheck = (inferType a typeEnv, inferType b typeEnv)
+          in if fst typeCheck = snd typeCheck && fst typeCheck = TBool
+            then logicAnd(evaluate a amb typeEnv, evaluate b amb typeEnv)
+            else failwith "Type error in And"
+      | Or(a,b) -> (* OK *)
+          let typeCheck = (inferType a typeEnv, inferType b typeEnv)
+          in if fst typeCheck = snd typeCheck && fst typeCheck = TBool
+            then logicOr(evaluate a amb typeEnv, evaluate b amb typeEnv)
+            else failwith "Type error in Or"
+      | Less(a,b) -> (* OK *)
+          let typeCheck = (inferType a typeEnv, inferType b typeEnv)
+          in if fst typeCheck = snd typeCheck && fst typeCheck = TInt
+            then less(evaluate a amb typeEnv, evaluate b amb typeEnv)
+            else failwith "Type error in Less"
+      | Not(a) ->  (* OK *)
+          let typeCheck = inferType a typeEnv
+          in if typeCheck = TBool
+            then unaryNegation(evaluate a amb typeEnv)
+            else failwith "Type error in Not"
+      | Ifthenelse(a,b,c) -> (* OK *)
+          let (boolGuardT, retT1, retT2) = (inferType a typeEnv, inferType b typeEnv, inferType c typeEnv)
+          in if boolGuardT = TBool && retT1 = retT2
+            then (if evaluate a amb typeEnv = Bool true then evaluate b amb typeEnv else evaluate c amb typeEnv)
+            else failwith "Type error in Ifthenelse"
+      | Let(a,b,c) -> (* OK *)
+          let newTypeEnv = bindtyp typeEnv a (inferType b typeEnv)
+          in let newExecEnv = bind (amb, a, (evaluate b amb typeEnv))
+          in evaluate c newExecEnv newTypeEnv 
+      | Fun(a,b) -> (* OK *)
+          Closure(Fun(a,b), calcFV b amb emptyenv) 
+      | Rec(a,(Fun(x,t))) -> (* OK *) 
+          let tSubst = substRec (Rec(a,Fun(x,t))) a t in
+            Closure(Fun(x,tSubst), calcFV tSubst amb emptyenv)
+      | Appl(a,b) -> (* OK *)
+          (match evaluate a amb typeEnv with
+               Closure(Fun(x2,t2), amb_locale) ->
+                 let newTypeEnv = bindtyp typeEnv x2 (inferType b typeEnv)
+                 in let newExecEnv = bind (amb_locale, x2, evaluate b amb typeEnv)
+                 in evaluate t2 newExecEnv newTypeEnv
+             |  _ -> failwith "Funzione non valida")
+      | _ -> failwith "Espressione non valida in sem"
+  in evaluate e amb newtypenv;;
+
