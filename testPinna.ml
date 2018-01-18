@@ -166,7 +166,11 @@ sem test14 emptyenv;;
 
 
 (*--------------------------------------- *)
-let test15 = Let(Ide "p",Epair(Fun(Ide "x", Ifthenelse(Eq(Val(Ide "x"),Empty),True,False)),Cons(Cons(Eint 1,Empty),Empty)),Appl(Fst(Val(Ide "p")),Snd(Val(Ide "p"))));;
+let test15 = Let(Ide "p",
+                 Epair(
+                   Fun(Ide "x", Ifthenelse(Eq(Val(Ide "x"),Empty),True,False)),
+                       Cons(Cons(Eint 1,Empty),Empty)),
+                 Appl(Fst(Val(Ide "p")),Snd(Val(Ide "p"))));;
 
 (*     
 tipo: etype = TBool 

@@ -1,4 +1,6 @@
 
+
+
 (* Identificatori (nomi di variabile) *)
 type  ide = Ide of string;;
 
@@ -65,6 +67,19 @@ let rec bindtyp (l:(ide*etype)list) ni ne = match l with
 (* Generatore di nuove variabili di tipo *)
 let nextsym = ref (-1);;
 let newvar = fun () -> nextsym:=!nextsym+1; TVar ("?T" ^ string_of_int (!nextsym));;
+
+
+
+let rec typeEquality t1 t2 =
+  match t1,t2 with
+      (TInt, TInt) | (TBool, TBool) | (TChar, TChar)-> true
+    | (TPair(a,b), TPair(c,d)) -> typeEquality a c && typeEquality b d
+    | (TFun(a,b), TFun(c,d)) -> typeEquality a c && typeEquality b d
+    | (TList [a], TList [b]) -> typeEquality a b
+    | (TVar _, _) | (_, TVar _) -> true
+    | _ -> failwith "Espressione non valida in typeEquality";;
+
+
 
 (* Verifica (true) se la variabile di tipo di nome name compare in expr, false altrimenti *)
 let rec isContainedInExpr name expr = match expr with
@@ -185,25 +200,29 @@ let rec getConstraints expr amb = match expr with
                                    [(t2Type,t2Type)]@
                                     (t1Constrs)@
                                     (t2Constrs)))
-  | Fst(Epair(a,b) as t) ->
+  | Fst(t) ->
       let (tType,tConstrs) = getConstraints t amb
-        in (match tType with
-            (TPair(typeL,typeR)) -> (typeL, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
-                     (tConstrs)))
-          | _ -> failwith "L espressione non e una coppia")
-  | Snd(Epair(a,b) as t) ->
+      in (match tType with
+                (TPair(typeL,typeR)) -> (typeL, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
+                                               (tConstrs)))
+            | _ -> failwith "L espressione non è una coppia")
+  | Snd(t) ->
       let (tType,tConstrs) = getConstraints t amb
-        in (match tType with
-                (TPair(typeL,typeR)) -> (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
-                     (tConstrs)))
-              | _ -> failwith "L espressione non e una lista")
-(* Inferenza per il tipo lista !! potrebbe servire modificarli !!! TODO *)
+      in (match tType with
+              (TPair(typeL,typeR)) -> (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
+                                                 (tConstrs)))
+            | _ -> failwith "L'espressione non è una coppia")
+(* Inferenza per il tipo lista *)
   | Head l -> 
-      let (TList [lType], lConstraints) = getConstraints l  amb
-        in (lType, ([(TList [lType], TList [lType])]@lConstraints)) 
+      let (typeL, lConstraints) = getConstraints l  amb
+      in (match typeL with
+          (TList [lType]) -> (lType, ([(TList [lType], TList [lType])]@lConstraints))
+        | _ -> failwith "L'espressione non è una lista")
   | Tail l ->
       let (lType,lConstraints) = getConstraints l amb
-        in (lType, (lConstraints))
+        in (match lType with
+                (TList [typel]) -> (lType, (lConstraints))
+              | _ -> failwith "L'espressione non è una lista")
   | Cons(t1,t2) ->
       let ((t1Type, t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1 amb, getConstraints t2 amb)
         in (TList [t1Type], ([(t1Type,t1Type)]@
@@ -223,7 +242,7 @@ let rec getConstraints expr amb = match expr with
   | Let (name,t1,t2) -> 
       let a = newvar() in
         let (t1Type,t1Constrs) = (getConstraints t1 amb)
-          in let (t2Type,t2Constrs) = (getConstraints t2 (bindtyp amb name a))
+          in let (t2Type,t2Constrs) = (getConstraints t2 (bindtyp amb name t1Type))
              in (t2Type, ([(t1Type, a)]@
                            (t1Constrs)@
                            (t2Constrs)))
@@ -234,21 +253,25 @@ let rec getConstraints expr amb = match expr with
       in (TFun(a,tType), tConstrs)
 (* Inferenza per Appl *)
   | Appl(t1,t2) ->
-      let a = newvar() in
-      let (t1Type, t1Constrs) = getConstraints t1 amb in
-        let (t2Type, t2Constrs) = getConstraints t2 amb 
-        in (a, ([t1Type, TFun(t2Type,a)]@
-                  (t1Constrs)@
-                  (t2Constrs)))
+      let a = newvar()
+      in let (t1Type, t1Constrs) = getConstraints t1 amb 
+      in let (t2Type, t2Constrs) = getConstraints t2 amb 
+      in (a, ([t1Type, TFun(t2Type,a)]@
+                (t1Constrs)@
+                (t2Constrs)))
+
 (* Inferenza per Rec *)
-  | Rec(y, Fun(x,t)) -> 
+  | Rec(y,f) -> 
       let a = newvar() in
-      let (tType, tConstrs) = getConstraints (Fun(x,t)) (bindtyp amb y a)
+      let (tType, tConstrs) = getConstraints f (bindtyp amb y a)
       in match tType with
           TFun(xType,termType) -> (TFun(xType,termType), ([(TFun(xType,termType),a)]@tConstrs))
           | _ -> failwith "Il secondo termine non è una funzione"
 (* Rompere solo in caso di incendio *)
-  | _ -> failwith "Tipo non inferibile (getConstraints)";;
+(*  | _ -> failwith "Tipo non inferibile (getConstraints)"*)
+;;
+
+
 
 
 (* Se il tipo e inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
@@ -259,38 +282,6 @@ let unifiedConstrs = solveConstraints (snd exprConstraints) in
 
 
 
-
-
-(* !!!!!!! Temporaneamente RIMOSSI !!!!!!!
-   Ereditati da typingg10.ml
-type ide = Ide of string;;
-type exp =
-Val of ide
-| Eint of int
-| Echar of char
-| True
-| False
-| Empty
-| Sum of exp * exp
-| Diff of exp * exp
-| Times of exp * exp
-| And of exp * exp
-| Or of exp * exp
-| Not of exp
-| Eq of exp * exp
-| Less of exp * exp
-| Cons of exp * exp
-| Head of exp
-| Tail of exp
-| Fst of exp
-| Snd of exp
-| Epair of exp * exp
-| Ifthenelse of exp * exp * exp
-| Let of ide * exp * exp
-| Fun of ide * exp
-| Appl of exp * exp
-| Rec of ide * exp
-;;*)
 type eval =
   Undefined
 | Int of int
@@ -410,6 +401,8 @@ let rec substRec newVal oldVal expr = match expr with
   | _ -> failwith "Errore nella sostituzione Rec";;
 
 
+
+
 let rec sem (e:exp) (amb:env) =
   let rec evaluate (e:exp) (amb:env) (typeEnv:(ide*etype)list) =
     match e with
@@ -419,18 +412,22 @@ let rec sem (e:exp) (amb:env) =
       | True -> Bool true
       | False -> Bool false
       | Empty -> List []
-      | Cons(a,b) ->  (* DA RIVEDERE *)
+      | Cons(a,b) -> 
           let result = cons(evaluate a amb typeEnv, evaluate b amb typeEnv)
           in let isConsable = try (true, inferType e typeEnv) with _ -> (false, TVar "")
           in if fst isConsable then result else failwith "Type error in Cons"
       | Head a -> head (evaluate a amb typeEnv) 
       | Tail a -> tail (evaluate a amb typeEnv) 
       | Epair(a,b) -> pair (evaluate a amb typeEnv, evaluate b amb typeEnv) (* OK *)
-      | Fst(Epair(a,b)) -> evaluate a amb typeEnv (* OK *)
-      | Snd(Epair(a,b)) -> evaluate b amb typeEnv (* OK *)
+      | Fst(p) -> (match evaluate p amb typeEnv with
+                      Pair(a,b) -> a
+                    | _ -> failwith "errore sem:Fst, valore in ambiente non coppia")
+      | Snd(p) -> (match evaluate p amb typeEnv with
+                      Pair(a,b) -> b
+                    | _ -> failwith "errore sem:Fst, valore in ambiente non coppia")
       | Eq(a,b) -> (* OK *)
           let typeCheck = (inferType a typeEnv, inferType b typeEnv)
-          in if fst typeCheck = snd typeCheck 
+          in if typeEquality (fst typeCheck) (snd typeCheck)
             then eq(evaluate a amb typeEnv, evaluate b amb typeEnv)
             else failwith "Type error in Eq"
       | Times(a,b) -> (* OK *)
@@ -470,7 +467,7 @@ let rec sem (e:exp) (amb:env) =
             else failwith "Type error in Not"
       | Ifthenelse(a,b,c) -> (* OK *)
           let (boolGuardT, retT1, retT2) = (inferType a typeEnv, inferType b typeEnv, inferType c typeEnv)
-          in if boolGuardT = TBool && retT1 = retT2
+          in if boolGuardT = TBool && typeEquality retT1 retT2
             then (if evaluate a amb typeEnv = Bool true then evaluate b amb typeEnv else evaluate c amb typeEnv)
             else failwith "Type error in Ifthenelse"
       | Let(a,b,c) -> (* OK *)
@@ -491,4 +488,3 @@ let rec sem (e:exp) (amb:env) =
              |  _ -> failwith "Funzione non valida")
       | _ -> failwith "Espressione non valida in sem"
   in evaluate e amb newtypenv;;
-
