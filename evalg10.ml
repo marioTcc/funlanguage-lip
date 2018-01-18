@@ -492,17 +492,3 @@ let rec sem (e:exp) (amb:env) =
       | _ -> failwith "Espressione non valida in sem"
   in evaluate e amb newtypenv;;
 
-
-sem (Cons(Echar 'c', Cons(Eint 2, Empty))) emptyenv;;
-let t1 = (Cons(Cons(Eint 1, Empty), Cons(Empty, Empty)));;
-let t2 = (Cons(Cons(Eint 3523, Empty), t1)) ;;
-sem t2 emptyenv;;
-sem (Cons(Cons(Empty, Empty), t2)) emptyenv;;
-
-sem(Cons(Empty, Cons(Eint 1, Empty))) emptyenv;;
-
-[]::([3524]::([1]::([]::[])));;
-[]::[1;2];;
-sem (Cons(Empty,(Cons((Cons(Eint 3,Empty)),(Cons(Empty,( Cons((Cons (Eint 3,Empty)),(Cons (Empty,(Cons (Empty, Empty)))))))))))) emptyenv;;
-sem (Cons((Cons (Empty,Empty)),(Cons((Cons(Eint 3,Empty)),(Cons(Empty,( Cons((Cons (Eint 3,Empty)),(Cons (Empty,(Cons (Empty, Empty)))))))))))) emptyenv ;;
-sem (Cons((Cons(Echar 'c',Empty)),(Cons(Empty,( Cons((Cons (Eint 3,Empty)),(Cons (Empty,(Cons (Empty, Empty)))))))))) emptyenv ;;
