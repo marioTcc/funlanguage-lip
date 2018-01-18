@@ -408,7 +408,7 @@ let rec substRec newVal oldVal expr = match expr with
   | Let(a,b,c) -> Let(a, substRec newVal oldVal b, substRec newVal oldVal c)
   | Fun(x,t) -> Fun(x, substRec newVal oldVal t)
   | Appl(a,b) -> Appl(substRec newVal oldVal a, substRec newVal oldVal b)
-  | _ -> failwith "Errore nella sostituzione Rec";;
+  | _ -> failwith "substRec: Errore nella sostituzione Rec";;
 
 
 let rec sem (e:exp) (amb:env) =
@@ -496,3 +496,6 @@ let rec sem (e:exp) (amb:env) =
              |  _ -> failwith "Funzione non valida")
       | _ -> failwith "Espressione non valida in sem"
   in evaluate e amb newtypenv;;
+
+
+
