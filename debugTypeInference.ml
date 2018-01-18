@@ -1,6 +1,7 @@
 
 let filename = "<Inserire nome file typeing qui>";;
-#use "typingg10.ml";;
+(* #use "typingg10.ml";; *)
+#use "typeinfSemPinna.ml";;
 
 (* Vari tests *)
 let giuste = 

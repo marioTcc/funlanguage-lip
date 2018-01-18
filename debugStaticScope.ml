@@ -34,6 +34,6 @@ fun f1 (x) =
 }
 *)
 
-(* Valore atteso: 755 *)
+(* Valore atteso: Int 755 *)
 sem expr1 emptyenv;;
 
