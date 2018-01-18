@@ -515,9 +515,7 @@ let rec sem (e:exp) (amb:env) =
                  in evaluate t2 newExecEnv newTypeEnv
              |  _ -> failwith "Funzione non valida")
       | _ -> failwith "Espressione non valida in sem"
-  in evaluate e amb newtypenv;;
+  in let isInferrable expr = try (true, inferType expr newtypenv amb) with _ -> (false, TVar "")
+  in if fst (isInferrable e) then evaluate e amb newtypenv else failwith "sem:isInferrable - Espressione non valida";;
 
-
-
-
-
+ 
