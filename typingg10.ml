@@ -68,6 +68,19 @@ let rec bindtyp (l:(ide*etype)list) ni ne = match l with
 let nextsym = ref (-1);;
 let newvar = fun () -> nextsym:=!nextsym+1; TVar ("?T" ^ string_of_int (!nextsym));;
 
+
+
+let rec typeEquality t1 t2 =
+  match t1,t2 with
+      (TInt, TInt) | (TBool, TBool) | (TChar, TChar)-> true
+    | (TPair(a,b), TPair(c,d)) -> typeEquality a c && typeEquality b d
+    | (TFun(a,b), TFun(c,d)) -> typeEquality a c && typeEquality b d
+    | (TList [a], TList [b]) -> typeEquality a b
+    | (TVar _, _) | (_, TVar _) -> true
+    | _ -> failwith "Espressione non valida in typeEquality";;
+
+
+
 (* Verifica (true) se la variabile di tipo di nome name compare in expr, false altrimenti *)
 let rec isContainedInExpr name expr = match expr with
     TBool | TInt | TChar -> false
@@ -189,16 +202,16 @@ let rec getConstraints expr amb = match expr with
                                     (t2Constrs)))
   | Fst(t) ->
       let (tType,tConstrs) = getConstraints t amb
-        in (match tType with
-            (TPair(typeL,typeR)) -> (typeL, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
-                     (tConstrs)))
-          | _ -> failwith "L espressione non e una coppia")
+      in (match tType with
+                (TPair(typeL,typeR)) -> (typeL, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
+                                               (tConstrs)))
+            | _ -> failwith "L espressione non è una coppia")
   | Snd(t) ->
       let (tType,tConstrs) = getConstraints t amb
-        in (match tType with
-                (TPair(typeL,typeR)) -> (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
-                     (tConstrs)))
-              | _ -> failwith "L'espressione non e una lista")
+      in (match tType with
+              (TPair(typeL,typeR)) -> (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
+                                                 (tConstrs)))
+            | _ -> failwith "L'espressione non è una coppia")
 (* Inferenza per il tipo lista *)
   | Head l -> 
       let (typeL, lConstraints) = getConstraints l  amb
@@ -229,7 +242,7 @@ let rec getConstraints expr amb = match expr with
   | Let (name,t1,t2) -> 
       let a = newvar() in
         let (t1Type,t1Constrs) = (getConstraints t1 amb)
-          in let (t2Type,t2Constrs) = (getConstraints t2 (bindtyp amb name a))
+          in let (t2Type,t2Constrs) = (getConstraints t2 (bindtyp amb name t1Type))
              in (t2Type, ([(t1Type, a)]@
                            (t1Constrs)@
                            (t2Constrs)))
@@ -264,7 +277,4 @@ let rec typeinf expr = let exprConstraints = getConstraints expr newtypenv in
 let unifiedConstrs = solveConstraints (snd exprConstraints) in 
 (if unifiedConstrs = [] then fst exprConstraints else
      solveRemainingConstrs  (fst exprConstraints) unifiedConstrs);;
-
-
-
 

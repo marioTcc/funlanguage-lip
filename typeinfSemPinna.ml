@@ -49,8 +49,8 @@ let newtypenv = ([]:(ide*etype)list) ;;
 let confrontIde (a:ide) (b:ide) = match a,b with
 Ide x , Ide y -> if (x=y) then true else false;;
 let rec applytypenv (l:(ide*etype)list) s = match l with
-[] -> failwith "listaVuota"
-  |(i,e)::[] -> if (confrontIde i s) then e else failwith "nonPresente"
+[] -> failwith "typeEnv: listaVuota"
+  |(i,e)::[] -> if (confrontIde i s) then e else failwith "typeEnv: nonPresente"
   |(i,e)::l1 -> if (confrontIde i s) then e else applytypenv l1 s ;;
 let rec bindtyp (l:(ide*etype)list) ni ne = match l with 
 [] -> (ni,ne)::[]
@@ -67,6 +67,19 @@ let rec bindtyp (l:(ide*etype)list) ni ne = match l with
 (* Generatore di nuove variabili di tipo *)
 let nextsym = ref (-1);;
 let newvar = fun () -> nextsym:=!nextsym+1; TVar ("?T" ^ string_of_int (!nextsym));;
+
+
+
+let rec typeEquality t1 t2 =
+  match t1,t2 with
+      (TInt, TInt) | (TBool, TBool) | (TChar, TChar)-> true
+    | (TPair(a,b), TPair(c,d)) -> typeEquality a c && typeEquality b d
+    | (TFun(a,b), TFun(c,d)) -> typeEquality a c && typeEquality b d
+    | (TList [a], TList [b]) -> typeEquality a b
+    | (TVar _, _) | (_, TVar _) -> true
+    | _ -> failwith "Espressione non valida in typeEquality";;
+
+
 
 (* Verifica (true) se la variabile di tipo di nome name compare in expr, false altrimenti *)
 let rec isContainedInExpr name expr = match expr with
@@ -189,16 +202,16 @@ let rec getConstraints expr amb = match expr with
                                     (t2Constrs)))
   | Fst(t) ->
       let (tType,tConstrs) = getConstraints t amb
-        in (match tType with
-            (TPair(typeL,typeR)) -> (typeL, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
-                     (tConstrs)))
-          | _ -> failwith "L espressione non e una coppia")
+      in (match tType with
+                (TPair(typeL,typeR)) -> (typeL, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
+                                               (tConstrs)))
+            | _ -> failwith "L espressione non è una coppia")
   | Snd(t) ->
       let (tType,tConstrs) = getConstraints t amb
-        in (match tType with
-                (TPair(typeL,typeR)) -> (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
-                     (tConstrs)))
-              | _ -> failwith "L'espressione non e una lista")
+      in (match tType with
+              (TPair(typeL,typeR)) -> (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
+                                                 (tConstrs)))
+            | _ -> failwith "L'espressione non è una coppia")
 (* Inferenza per il tipo lista *)
   | Head l -> 
       let (typeL, lConstraints) = getConstraints l  amb
@@ -229,7 +242,7 @@ let rec getConstraints expr amb = match expr with
   | Let (name,t1,t2) -> 
       let a = newvar() in
         let (t1Type,t1Constrs) = (getConstraints t1 amb)
-          in let (t2Type,t2Constrs) = (getConstraints t2 (bindtyp amb name a))
+          in let (t2Type,t2Constrs) = (getConstraints t2 (bindtyp amb name t1Type))
              in (t2Type, ([(t1Type, a)]@
                            (t1Constrs)@
                            (t2Constrs)))
@@ -259,6 +272,7 @@ let rec getConstraints expr amb = match expr with
 ;;
 
 
+
 (* Se il tipo è inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
 let rec typeinf expr = let exprConstraints = getConstraints expr newtypenv in
 let unifiedConstrs = solveConstraints (snd exprConstraints) in 
@@ -267,14 +281,11 @@ let unifiedConstrs = solveConstraints (snd exprConstraints) in
 
 
 
-
-
 (* Se il tipo e inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
 let rec inferType expr typeEnv = let exprConstraints = getConstraints expr typeEnv in
 let unifiedConstrs = solveConstraints (snd exprConstraints) in 
 (if unifiedConstrs = [] then fst exprConstraints else
      solveRemainingConstrs  (fst exprConstraints) unifiedConstrs);;
-
 
 
 
@@ -406,18 +417,22 @@ let rec sem (e:exp) (amb:env) =
       | True -> Bool true
       | False -> Bool false
       | Empty -> List []
-      | Cons(a,b) ->  (* DA RIVEDERE *)
+      | Cons(a,b) -> 
           let result = cons(evaluate a amb typeEnv, evaluate b amb typeEnv)
           in let isConsable = try (true, inferType e typeEnv) with _ -> (false, TVar "")
           in if fst isConsable then result else failwith "Type error in Cons"
       | Head a -> head (evaluate a amb typeEnv) 
       | Tail a -> tail (evaluate a amb typeEnv) 
       | Epair(a,b) -> pair (evaluate a amb typeEnv, evaluate b amb typeEnv) (* OK *)
-      | Fst(Epair(a,b)) -> evaluate a amb typeEnv (* OK *)
-      | Snd(Epair(a,b)) -> evaluate b amb typeEnv (* OK *)
+      | Fst(p) -> (match evaluate p amb typeEnv with
+                      Pair(a,b) -> a
+                    | _ -> failwith "errore sem:Fst, valore in ambiente non coppia")
+      | Snd(p) -> (match evaluate p amb typeEnv with
+                      Pair(a,b) -> b
+                    | _ -> failwith "errore sem:Fst, valore in ambiente non coppia")
       | Eq(a,b) -> (* OK *)
           let typeCheck = (inferType a typeEnv, inferType b typeEnv)
-          in if fst typeCheck = snd typeCheck 
+          in if typeEquality (fst typeCheck) (snd typeCheck)
             then eq(evaluate a amb typeEnv, evaluate b amb typeEnv)
             else failwith "Type error in Eq"
       | Times(a,b) -> (* OK *)
@@ -457,7 +472,7 @@ let rec sem (e:exp) (amb:env) =
             else failwith "Type error in Not"
       | Ifthenelse(a,b,c) -> (* OK *)
           let (boolGuardT, retT1, retT2) = (inferType a typeEnv, inferType b typeEnv, inferType c typeEnv)
-          in if boolGuardT = TBool && retT1 = retT2
+          in if boolGuardT = TBool && typeEquality retT1 retT2
             then (if evaluate a amb typeEnv = Bool true then evaluate b amb typeEnv else evaluate c amb typeEnv)
             else failwith "Type error in Ifthenelse"
       | Let(a,b,c) -> (* OK *)
@@ -478,4 +493,3 @@ let rec sem (e:exp) (amb:env) =
              |  _ -> failwith "Funzione non valida")
       | _ -> failwith "Espressione non valida in sem"
   in evaluate e amb newtypenv;;
-
