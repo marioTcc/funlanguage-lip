@@ -49,8 +49,8 @@ let newtypenv = ([]:(ide*etype)list) ;;
 let confrontIde (a:ide) (b:ide) = match a,b with
 Ide x , Ide y -> if (x=y) then true else false;;
 let rec applytypenv (l:(ide*etype)list) s = match l with
-[] -> failwith "listaVuota"
-  |(i,e)::[] -> if (confrontIde i s) then e else failwith "nonPresente"
+[] -> failwith "typeEnv: listaVuota"
+  |(i,e)::[] -> if (confrontIde i s) then e else failwith "typeEnv: nonPresente"
   |(i,e)::l1 -> if (confrontIde i s) then e else applytypenv l1 s ;;
 let rec bindtyp (l:(ide*etype)list) ni ne = match l with 
 [] -> (ni,ne)::[]
@@ -205,24 +205,24 @@ let rec getConstraints expr amb = match expr with
       in (match tType with
                 (TPair(typeL,typeR)) -> (typeL, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
                                                (tConstrs)))
-            | _ -> failwith "L espressione non è una coppia")
+            | _ -> failwith "L espressione non è una coppia")
   | Snd(t) ->
       let (tType,tConstrs) = getConstraints t amb
       in (match tType with
               (TPair(typeL,typeR)) -> (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
                                                  (tConstrs)))
-            | _ -> failwith "L'espressione non è una coppia")
+            | _ -> failwith "L'espressione non è una coppia")
 (* Inferenza per il tipo lista *)
   | Head l -> 
       let (typeL, lConstraints) = getConstraints l  amb
       in (match typeL with
           (TList [lType]) -> (lType, ([(TList [lType], TList [lType])]@lConstraints))
-        | _ -> failwith "L'espressione non è una lista")
+        | _ -> failwith "L'espressione non è una lista")
   | Tail l ->
       let (lType,lConstraints) = getConstraints l amb
         in (match lType with
                 (TList [typel]) -> (lType, (lConstraints))
-              | _ -> failwith "L'espressione non è una lista")
+              | _ -> failwith "L'espressione non è una lista")
   | Cons(t1,t2) ->
       let ((t1Type, t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1 amb, getConstraints t2 amb)
         in (TList [t1Type], ([(t1Type,t1Type)]@
@@ -266,11 +266,18 @@ let rec getConstraints expr amb = match expr with
       let (tType, tConstrs) = getConstraints f (bindtyp amb y a)
       in match tType with
           TFun(xType,termType) -> (TFun(xType,termType), ([(TFun(xType,termType),a)]@tConstrs))
-          | _ -> failwith "Il secondo termine non è una funzione"
+          | _ -> failwith "Il secondo termine non è una funzione"
 (* Rompere solo in caso di incendio *)
 (*  | _ -> failwith "Tipo non inferibile (getConstraints)"*)
 ;;
 
+
+
+(* Se il tipo è inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
+let rec typeinf expr = let exprConstraints = getConstraints expr newtypenv in
+let unifiedConstrs = solveConstraints (snd exprConstraints) in 
+(if unifiedConstrs = [] then fst exprConstraints else
+     solveRemainingConstrs  (fst exprConstraints) unifiedConstrs);;
 
 
 
@@ -357,6 +364,7 @@ let tail l = match l with
 let rec calcFV expr amb_old amb_new = match expr with
     (* Se si incontra un identificatore *)
     Val ((Ide v)as var) -> bind (amb_new, var, applyenv (amb_old,var)) 
+      (* ----------------------------------------------*)
   | Eint a -> amb_new
   | Echar a -> amb_new
   | True | False | Empty -> amb_new
@@ -401,8 +409,6 @@ let rec substRec newVal oldVal expr = match expr with
   | Fun(x,t) -> Fun(x, substRec newVal oldVal t)
   | Appl(a,b) -> Appl(substRec newVal oldVal a, substRec newVal oldVal b)
   | _ -> failwith "Errore nella sostituzione Rec";;
-
-
 
 
 let rec sem (e:exp) (amb:env) =
@@ -490,3 +496,5 @@ let rec sem (e:exp) (amb:env) =
              |  _ -> failwith "Funzione non valida")
       | _ -> failwith "Espressione non valida in sem"
   in evaluate e amb newtypenv;;
+
+
