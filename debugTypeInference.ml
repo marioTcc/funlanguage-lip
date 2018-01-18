@@ -34,7 +34,6 @@ let giuste =
    Eq(Appl(Fun(Ide "x", Val( Ide "x")), Eint 2), Appl(Rec(Ide "x", Fun(Ide "y", Sum(Val(Ide "y"), Eint 2))), Eint 2)), TBool;
    Eq(Appl(Fun(Ide "x", Val( Ide "x")), Eint 2), Eint 3), TBool;
    Eq(Appl(Fun(Ide "x", Val( Ide "x")), Eint 2), Appl(Rec(Ide "x", Fun(Ide "y", Val(Ide "y"))), Eint 2)), TBool;
-   Eq(Snd(Epair(Echar 'c',Tail(Cons(Eint 5,Cons(Eint 2,Empty))))), Cons(Eint 3, Empty)),TBool;
    Cons(Eint 3, Empty), TList[TInt]; 
    Cons(Echar 'c', Empty), TList[TChar]; 
    Cons(True, Empty), TList[TBool]; 
@@ -44,7 +43,6 @@ let giuste =
    Cons(Cons(Eint 2, Empty), Cons(Cons(Eint 3, Empty), Empty)), TList[TList[TInt]];
    Cons(Cons(Let(Ide "x", Echar 'c', Val (Ide "x")), Empty), Cons(Empty, Empty)), TList[TList[TChar]];
    Cons(Cons(Fun(Ide "x", Val(Ide "x")), Empty), Cons(Cons(Fun(Ide "x", Sum(Val(Ide"x"), Eint 3)), Empty), Empty)), TList[TFun(TInt, TInt)];
-   Cons(Cons(Eq(Echar 'c', Echar 'q'), Empty), Cons(Cons(Ifthenelse(Eq(Eint 1,Eint 1),Eq(Echar 't',Echar 'f'),Eq(Echar 't',Echar 't')), Empty), Empty)),TList [TList [TBool]];
    Head(Empty), TVar "_";
    Head(Cons(Eint 3, Empty)), TInt; 
    Head(Cons(Echar 'c', Empty)), TChar;
@@ -68,8 +66,6 @@ let giuste =
    Epair(Sum(Eint 2, Eint 3), Or(True, False)), TPair(TInt, TBool); 
    Epair(Less(Eint 5,Eint 1),Ifthenelse(Eq(Sum(Eint 3,Eint 1),Eint 4),Snd(Epair(Eint 3,Echar 'v')),Echar 'c')), TPair(TBool, TChar); 
    Epair(Cons(True,Cons(Not(False),Cons(False,Empty))), Fst(Epair(Echar 'w',Sum(Eint 3,Eint 7)))),TPair (TList [TBool], TChar);
-   Epair(Sum(Eint(-5),Head(Tail(Cons(Eint 5,Cons(Eint 4,Empty))))),Ifthenelse(Not(Eq(Less(Sum(Times(Eint 1,Eint 0),Eint 2),Eint 0),Less(Diff(Fst(Epair(Eint 1,Echar 'a')),Eint 4),Eint 1))),Not(Less(Head(Cons(Eint 2,Cons(Eint 3,Empty))),Eint 3)),And(True,Less(Head(Tail(Cons(Eint 2,Cons(Eint 3,Empty)))),Eint 4)))),TPair (TInt, TBool);
-   Epair(Appl(Fun(Ide "x", Val (Ide "x")),Snd(Epair(Sum(Eint 5,Eint 1),Times(Head(Cons(Eint 1,Cons(Eint 2,Empty))),Head(Fst(Epair(Cons(Eint 2,Cons(Sum(Eint 1,Eint 0),Empty)),Not(Or(True,And(False,False)))))))))),Ifthenelse(Not(Not(Not(Ifthenelse(Eq(True,True),Less(Eint 1,Eint 0),And(Or(True,True),False))))),Not(And(True,True)),And(False,True))),TPair (TInt, TBool);
    Fst(Epair(Eint 2, Eint 3)), TInt; 
    Fst(Epair(Echar 'c', Echar 'd')), TChar; 
    Fst(Epair(True, False)), TBool; 
@@ -79,13 +75,11 @@ let giuste =
    Snd(Epair(True, False)),TBool; 
    Snd(Epair(Sum(Eint 2, Eint 3), Or(True, False))), TBool;
    Snd(Epair(True,Cons(Cons(Cons(Cons(True,Empty),Empty),Cons(Empty,Empty)),Empty))), TList [TList [TList [TList [TBool]]]];
-   Snd(Head(Cons(Epair(Echar 'c',Eq(Eint 2,Eint 4)),Cons(Epair(Echar 'f',Less(Eint 2,Eint 4)),Empty)))),TBool;
    Ifthenelse(True, Sum(Eint 1, Eint 2), Diff(Eint 11, Eint 3)), TInt;
    Ifthenelse(False, True, False), TBool;
    Ifthenelse(True, Echar 'c', Echar 'd'), TChar;
    Ifthenelse(Eq(Sum(Eint 3,Eint 1),Diff(Eint 5,Eint 1)),Times(Eint 2,Eint 5),Snd(Epair(Echar 'a',Eint 7))), TInt;
    Ifthenelse(Eq(Fst(Epair(Eint 5,Echar 'v')),Fst(Epair(Eint 5,Echar 'w'))),Tail(Cons(Echar 'v',Cons(Echar 'q',Cons(Echar 'w',Empty)))),Cons(Head(Cons(Echar 'r',Cons(Echar 'm',Empty))),Cons(Echar 'q',Empty))  ),TList [TChar];
-   Ifthenelse(Eq(Cons(Echar 'a',Cons(Echar 'b',Empty)),Cons(Echar 'a',Cons(Echar 'c',Empty))),Head(Tail((Cons(Echar 'a',Cons(Echar 'b',Empty))))),Fst(Epair(Snd(Epair(Eint 1,Echar 'c')),True))),TChar;
    Let(Ide "x", Eint 2, Sum(Val(Ide "x"),Eint 3)), TInt;
    Let(Ide "x", True, And(Val(Ide "x"), False)), TBool;
    Let(Ide "x", Echar 'c', Ifthenelse(Eq(Val(Ide "x"), Echar 'c'), Echar 'd', Echar 'f')), TChar;
