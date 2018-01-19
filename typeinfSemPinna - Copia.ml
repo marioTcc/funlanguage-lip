@@ -143,9 +143,6 @@ let rec solveRemainingConstrs expType remConstrs = match remConstrs with
 
 
 
-
-
-
 (* Risolve i vincoli (entry point dell'algoritmo di unificazione) *)
 let rec solveConstraints constrs = match constrs with
     [] -> ([]:(etype * etype) list)
@@ -181,6 +178,7 @@ let rec inferEval value =
         (match a with
              [] -> Empty
            | hd::tl -> Cons(inferEval hd, inferEval (List tl)));;
+
 
 
 
@@ -234,40 +232,28 @@ let rec getConstraints expr amb execEnv = match expr with
                                     (t1Constrs)@
                                     (t2Constrs)))
   | Fst(t) ->
-      let (tType, tConstrs) = getConstraints t amb execEnv
+      let (tType,tConstrs) = getConstraints t amb execEnv
       in (match tType with
-              (TPair(typeL,typeR)) -> (typeL, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
-                                                 (tConstrs)))
-            | TVar n -> 
-                (let a = newvar()
-                 in (a, [TPair(a,newvar()), tType]@tConstrs))
-            | _ -> failwith "getConstraints:Fst - Espressione non valida")
+                (TPair(typeL,typeR)) -> (typeL, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
+                                               (tConstrs)))
+            | _ -> failwith "L espressione non è una coppia")
   | Snd(t) ->
       let (tType,tConstrs) = getConstraints t amb execEnv
       in (match tType with
               (TPair(typeL,typeR)) -> (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
                                                  (tConstrs)))
-            | TVar n -> 
-                (let a = newvar()
-                 in (a, [TPair(newvar(),a), tType]@tConstrs))
-            | _ -> failwith "getConstraints:Snd - Espressione non valida")
+            | _ -> failwith "L'espressione non è una coppia")
 (* Inferenza per il tipo lista *)
   | Head l -> 
-      let (typeL, lConstraints) = getConstraints l amb execEnv
+      let (typeL, lConstraints) = getConstraints l  amb execEnv
       in (match typeL with
-              (TList [lType]) -> (lType, ([(TList [lType], TList [lType])]@lConstraints))
-            | TVar n ->
-                let a = newvar()
-                in (a, ([(TList [a], typeL)]@lConstraints))
-            | _ -> failwith "getConstraints:Head - L'espressione non è una lista")
+          (TList [lType]) -> (lType, ([(TList [lType], TList [lType])]@lConstraints))
+        | _ -> failwith "L'espressione non è una lista")
   | Tail l ->
       let (lType,lConstraints) = getConstraints l amb execEnv
         in (match lType with
                 (TList [typel]) -> (lType, (lConstraints))
-              | TVar n -> 
-                  let a = newvar()
-                  in (TList [a], ([TList[a], lType]))
-              | _ -> failwith "L'espressione non è una lista")
+              | _ -> failwith "getConstraints:Tail L'espressione non è una lista")
   | Cons(t1,t2) ->
       let ((t1Type, t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1 amb execEnv, getConstraints t2 amb execEnv)
         in (TList [t1Type], ([(t1Type,t1Type)]@
@@ -304,6 +290,7 @@ let rec getConstraints expr amb execEnv = match expr with
       in (a, ([t1Type, TFun(t2Type,a)]@
                 (t1Constrs)@
                 (t2Constrs)))
+
 (* Inferenza per Rec *)
   | Rec(y,f) -> 
       let a = newvar() in
@@ -326,10 +313,11 @@ let unifiedConstrs = solveConstraints (snd exprConstraints) in
 
 
 (* Se il tipo e inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
-let rec inferType expr typeEnv execEnv = let exprConstraints = getConstraints expr typeEnv execEnv in
-let unifiedConstrs = solveConstraints (snd exprConstraints) in 
-(if unifiedConstrs = [] then fst exprConstraints else
-     solveRemainingConstrs  (fst exprConstraints) unifiedConstrs);;
+let rec inferType expr typeEnv execEnv = 
+  let exprConstraints = getConstraints expr typeEnv execEnv in
+  let unifiedConstrs = solveConstraints (snd exprConstraints) in 
+    (if unifiedConstrs = [] then fst exprConstraints else
+       solveRemainingConstrs  (fst exprConstraints) unifiedConstrs);;
 
 
 
@@ -441,10 +429,13 @@ let rec substRec newVal oldVal expr = match expr with
 
 
 
-let rec sem (e:exp) (amb:env) =
   let rec evaluate (e:exp) (amb:env) (typeEnv:(ide*etype)list) =
     match e with
-      | Val x -> applyenv (amb, x)
+      | Val x -> 
+          let value = applyenv (amb, x)
+          in if value = Undefined 
+            then failwith "sem:Val - Variabile non definita in ambiente"
+            else value
       | Eint n -> Int n
       | Echar b -> Char b
       | True -> Bool true
@@ -456,7 +447,7 @@ let rec sem (e:exp) (amb:env) =
           in if fst isConsable then result else failwith "Type error in Cons"
       | Head a -> head (evaluate a amb typeEnv) 
       | Tail a -> tail (evaluate a amb typeEnv) 
-      | Epair(a,b) -> pair (evaluate a amb typeEnv, evaluate b amb typeEnv) (* OK *)
+      | Epair(a,b) -> pair (evaluate a amb typeEnv, evaluate b amb typeEnv)
       | Fst(p) -> (match evaluate p amb typeEnv with
                       Pair(a,b) -> a
                     | _ -> failwith "errore sem:Fst, valore in ambiente non coppia")
@@ -520,10 +511,14 @@ let rec sem (e:exp) (amb:env) =
       | Appl(a,b) -> (* OK *)
           (match evaluate a amb typeEnv with
                Closure(Fun(x2,t2), amb_locale) ->
-                 let newTypeEnv = bindtyp typeEnv x2 (try (inferType b typeEnv amb) with _ -> failwith "errore proprio qui")
+                 let newTypeEnv = bindtyp typeEnv x2 (inferType b typeEnv amb)
                  in let newExecEnv = bind (amb_locale, x2, evaluate b amb typeEnv)
                  in evaluate t2 newExecEnv newTypeEnv
              |  _ -> failwith "Funzione non valida")
-      | _ -> failwith "Espressione non valida in sem"
-  in evaluate e amb newtypenv;;
+      | _ -> failwith "Espressione non valida in sem";;
+let rec sem (e:exp) (amb:env) = evaluate e amb newtypenv;;
+(*
+  let isInferrable expr = try (true, inferType expr newtypenv amb) with _ -> (false, TVar "")
+  in let isInferrableCheck = isInferrable e
+  in if fst isInferrableCheck then evaluate e amb newtypenv else failwith "sem:isInferrable - Espressione non valida";; *)
 
