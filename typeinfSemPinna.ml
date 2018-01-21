@@ -1,6 +1,3 @@
-
-
-
 (* Identificatori (nomi di variabile) *)
 type  ide = Ide of string;;
 
@@ -59,8 +56,8 @@ let newtypenv = ([]:(ide*etype)list) ;;
 let confrontIde (a:ide) (b:ide) = match a,b with
 Ide x , Ide y -> if (x=y) then true else false;;
 let rec applytypenv (l:(ide*etype)list) s = match l with
-[] -> failwith "listaVuota"
-  |(i,e)::[] -> if (confrontIde i s) then e else failwith "nonPresente"
+[] -> failwith "applytypenv: Env is empty"
+  |(i,e)::[] -> if (confrontIde i s) then e else failwith "applytypenv - Undefined name"
   |(i,e)::l1 -> if (confrontIde i s) then e else applytypenv l1 s ;;
 let rec bindtyp (l:(ide*etype)list) ni ne = match l with 
 [] -> (ni,ne)::[]
@@ -69,15 +66,11 @@ let rec bindtyp (l:(ide*etype)list) ni ne = match l with
   |(i,e)::l2 -> if (confrontIde i ni) then (i,ne)::l2
     else (i,e)::(bindtyp l2 ni ne);;
 
-
 (* Ambiente di esecuzione *)
 let emptyenv = function (i:ide) -> Undefined;;
 let applyenv ((r:env),(x:ide))= r x ;;
 let bind (ambiente, nome, ev) =
  function nuovo -> if nuovo = nome then ev else applyenv (ambiente, nuovo);;
-
-
-
 
 (* Generatore di nuove variabili di tipo *)
 let nextsym = ref (-1);;
@@ -94,8 +87,6 @@ let rec typeEquality t1 t2 =
     | (TVar _, _) | (_, TVar _) -> true
     | _ -> failwith "Espressione non valida in typeEquality";;
 
-
-
 (* Verifica (true) se la variabile di tipo di nome name compare in expr, false altrimenti *)
 let rec isContainedInExpr name expr = match expr with
     TBool | TInt | TChar -> false
@@ -106,7 +97,6 @@ let rec isContainedInExpr name expr = match expr with
       | _ -> isContainedInExpr name t)
   | _ -> failwith "Errore nella verifica di occorrenza"
 ;;
-
 
 (* Algoritmo di sostituzione *)
 let rec subst newVal oldVal constrs = 
@@ -120,8 +110,6 @@ let rec subst newVal oldVal constrs =
 in List.fold_right (fun x acc -> (substValue newVal oldVal (fst x), substValue newVal oldVal (snd x))::acc) 
                                 constrs [];;
   
-
-
 (* Valuta il tipo dell'espressione rispetto al vincolo (t1,t2) *)
 let rec getType expType (t1,t2) = match expType with
     TInt -> TInt
@@ -131,197 +119,240 @@ let rec getType expType (t1,t2) = match expType with
   | TFun (t3,t4) -> TFun (getType t3 (t1,t2) , getType t4 (t1,t2))
   | TPair(t3,t4) -> TPair (getType t3 (t1,t2), getType t4 (t1,t2))
   | TList [l] -> TList [getType l (t1,t2)]
-  | _ -> failwith "Errore";;
+  | _ -> failwith "getType - Errore";;
 
 (* Valuta se sia possibile risolvere i vincoli rimanenti e inferire il tipo dell'espressione *) 
 let rec solveRemainingConstrs expType remConstrs = match remConstrs with
     [] -> expType
-  | (TVar name, expr)::tl | (expr, TVar name)::tl -> 
+  | (TVar name, expr)::tl -> 
       solveRemainingConstrs (getType expType (name, expr)) tl
   | _ -> failwith "Tipo non inferibile (solving)";;
-
-
-
-
-
-
 
 (* Risolve i vincoli (entry point dell'algoritmo di unificazione) *)
 let rec solveConstraints constrs = match constrs with
     [] -> ([]:(etype * etype) list)
   | hd::tl as constrsList -> match fst hd, snd hd with
-         (* Regola 1 *)
-         (TInt,TInt) | (TBool,TBool) | (TChar,TChar) -> solveConstraints tl
-       | (TVar n1, TVar n2) -> if n1 = n2 then solveConstraints tl else solveConstraints tl@[hd]
-         (* Regola 2 *)
-       | (TVar (_ as name), _) -> if not (isContainedInExpr name (snd hd)) 
-                          then (fst hd, snd hd)::solveConstraints (subst (snd hd) name tl)
-                          else failwith "Erroe occorrenza tipo"
-       | (_, TVar (_ as name)) -> if not (isContainedInExpr name (fst hd)) 
-                          then (fst hd, snd hd)::solveConstraints (subst (fst hd) name tl)
-                          else failwith "Errore occorrenza tipo"
-          (* Regola 3 *)
-       | (TFun(a,b), TFun(c,d)) | (TPair(a,b),TPair(c,d)) -> solveConstraints ((a,c)::(b,d)::tl)
-       | (TList [a], TList [b]) -> solveConstraints ((a,b)::tl)
-          (* Altrimenti ... *)
-       | _ -> constrsList;;
+        (* Regola 1 *)
+        (TInt,TInt) | (TBool,TBool) | (TChar,TChar) -> solveConstraints tl
+      | (TVar n1, TVar n2) -> 
+          if n1 = n2
+          then solveConstraints tl 
+          else (fst hd, snd hd)::solveConstraints (subst (snd hd) n1 tl)
+          
+      (* Regola 2 *)
+      | (TVar (_ as name), _) -> 
+          if not (isContainedInExpr name (snd hd)) 
+          then (fst hd, snd hd)::solveConstraints (subst (snd hd) name tl)
+          else failwith "solveConstraints:(TVar _, _) - Erroe occorrenza tipo"
+      | (_, TVar (_ as name)) -> 
+          if not (isContainedInExpr name (fst hd)) 
+          then (snd hd, fst hd)::solveConstraints (subst (fst hd) name tl)
+          else failwith "solveConstraints:(_, TVar _) - Errore occorrenza tipo"
+            
+      (* Regola 3 *)
+      | (TFun(a,b), TFun(c,d)) 
+      | (TPair(a,b),TPair(c,d)) -> solveConstraints ((a,c)::(b,d)::tl)
+      
+      | (TList [a], TList [b]) -> solveConstraints ((a,b)::tl)
+      
+      (* Altrimenti ... *)
+      | _ -> constrsList;;
 
 
 
-let rec inferEval value = 
-  match value with
-      Undefined -> failwith "evalToExp:Undefined - Variabile non definita"
+let rec buildExpr ev execEnv =
+  match ev with
+      Undefined -> failwith "inferEval:Undefined - Nome indefinito"
     | Int x -> Eint x
-    | Char x -> Echar x
-    | Bool x -> if x then True else False
-    | Pair(a,b) -> Epair(inferEval a,inferEval b)
-    | Closure(a,b) -> a (* Rompe lo scope ?? *)
+    | Bool b -> if b then True else False
+    | Char c -> Echar c
     | List [] -> Empty
-    | List a -> 
-        (match a with
-             [] -> Empty
-           | hd::tl -> Cons(inferEval hd, inferEval (List tl)));;
+    | List (hd::tl) -> Cons(buildExpr hd execEnv, buildExpr (List tl) execEnv)
+    | Pair(sx,dx) -> Epair(buildExpr sx execEnv, buildExpr dx execEnv)
+    | _ -> failwith "buildExpr: - Espressione non valida"
+;;
 
 
 
 
 (* Genera una coppia (tipo espressione, lista di vincoli) *)
-let rec getConstraints expr amb execEnv = match expr with
-    Val nome -> 
-      let constraints =  
-        try (applytypenv amb nome, []) 
-        with _ -> getConstraints (inferEval (applyenv (execEnv,nome))) amb execEnv
-      in constraints
-(* Inferenza per caratteri *)
-  | Echar c -> (TChar,[])
-(* Inferenza per numerici *)
-  | Eint x -> (TInt, [])
-  | Sum(t1,t2) | Diff(t1,t2) | Times(t1,t2) -> 
-      let ((t1Type, t1Constrs),(t2Type, t2Constrs)) = (getConstraints t1 amb execEnv, getConstraints t2 amb execEnv)
-            in (TInt, ([(t1Type,TInt)]@
-                       [(t2Type,TInt)]@
-                        (t1Constrs)@
-                        (t2Constrs)))
-(* Inferenza per booleani o per espressioni booleane *)
-  | True | False -> (TBool, [])
-  | And(b1,b2) | Or(b1,b2) -> 
-      let ((b1Type,b1Constrs),(b2Type,b2Constrs)) = (getConstraints b1 amb execEnv, getConstraints b2 amb execEnv)
+let rec getConstraints expr typeEnv execEnv = 
+  match expr with
+      Val nome ->
+        let (isdefinedT, gConstrs) = 
+          try (true, (applytypenv typeEnv nome, [])) 
+          with _ -> (false, (TVar "", []))
+        in if isdefinedT
+          then gConstrs 
+          else (match applyenv(execEnv,nome) with
+                    Closure(f,amb_locale) ->
+                      (match f with
+                           Fun(x,t) -> getConstraints f newtypenv amb_locale
+                         | _ -> failwith "getConstraints:Val:Closure - Chiusura non valida")
+                  | _ -> getConstraints (buildExpr (applyenv(execEnv,nome)) execEnv) typeEnv execEnv)
+        
+    | Echar c -> (TChar,[])
+    | Eint x -> (TInt, [])
+             
+    | True 
+    | False -> (TBool, [])
+        
+    | Sum(t1,t2) 
+    | Diff(t1,t2) 
+    | Times(t1,t2) -> 
+        let ((t1Type, t1Constrs),(t2Type, t2Constrs)) = 
+          (getConstraints t1 typeEnv execEnv, getConstraints t2 typeEnv execEnv)
+        in (TInt, ([(t1Type,TInt)]@
+                   [(t2Type,TInt)]@
+                    (t1Constrs)@
+                    (t2Constrs)))
+        
+    | And(b1,b2) 
+    | Or(b1,b2) -> 
+        let ((b1Type,b1Constrs),(b2Type,b2Constrs)) = 
+          (getConstraints b1 typeEnv execEnv, getConstraints b2 typeEnv execEnv)
         in(TBool, ([(b1Type,TBool)]@
                    [(b2Type, TBool)]@
                     (b1Constrs)@
                     (b2Constrs)))
-  | Not(b) ->
-      let (bType,bConstrs) = getConstraints b amb execEnv
-        in (TBool, ([bType, TBool]@
-                    (bConstrs)))
-  | Less(t1,t2) ->
-      let ((t1Type,t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1 amb execEnv, getConstraints t2 amb execEnv)
+            
+    | Not(b) ->
+        let (bType,bConstrs) = getConstraints b typeEnv execEnv
+        in (TBool, ([(bType, TBool)]@
+                     (bConstrs)))
+             
+    | Less(t1,t2) ->
+        let ((t1Type,t1Constrs),(t2Type,t2Constrs)) = 
+          (getConstraints t1 typeEnv execEnv, getConstraints t2 typeEnv execEnv)
         in (TBool, ([(t1Type, TInt)]@
                     [(t2Type, TInt)]@
-                    (t1Constrs)@
-                    (t2Constrs)))
-  | Eq(t1,t2) ->
-      let ((t1Type,t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1 amb execEnv, getConstraints t2 amb execEnv)
+                     (t1Constrs)@
+                     (t2Constrs)))
+             
+    | Eq(t1,t2) ->
+        let ((t1Type,t1Constrs),(t2Type,t2Constrs)) = 
+          (getConstraints t1 typeEnv execEnv, getConstraints t2 typeEnv execEnv)
         in (TBool, ([(t1Type, t2Type)]@
-                    [(t1Type, t1Type)]@
-                    [(t2Type, t2Type)]@
-                    (t1Constrs)@
-                    (t2Constrs))) 
-(* Inferenza per il tipo coppia *)
-  | Epair(t1,t2) -> 
-      let ((t1Type,t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1 amb execEnv, getConstraints t2 amb execEnv)
-        in ( TPair(t1Type,t2Type),([(t1Type,t1Type)]@
+                    [(t1Type,t1Type)]@
+                    [(t2Type,t2Type)]@
+                     (t1Constrs)@
+                     (t2Constrs))) 
+             
+    | Epair(t1,t2) -> 
+        let ((t1Type,t1Constrs),(t2Type,t2Constrs)) = 
+          (getConstraints t1 typeEnv execEnv, getConstraints t2 typeEnv execEnv)
+        in (TPair(t1Type,t2Type), ([(t1Type,t1Type)]@
                                    [(t2Type,t2Type)]@
                                     (t1Constrs)@
                                     (t2Constrs)))
-  | Fst(t) ->
-      let (tType,tConstrs) = getConstraints t amb execEnv
-      in (match tType with
-                (TPair(typeL,typeR)) -> (typeL, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
-                                               (tConstrs)))
-            | _ -> failwith "L espressione non è una coppia")
-  | Snd(t) ->
-      let (tType,tConstrs) = getConstraints t amb execEnv
-      in (match tType with
-              (TPair(typeL,typeR)) -> (typeR, ([(TPair(typeL,typeR), TPair(typeL,typeR))]@
-                                                 (tConstrs)))
-            | _ -> failwith "L'espressione non è una coppia")
-(* Inferenza per il tipo lista *)
-  | Head l -> 
-      let (typeL, lConstraints) = getConstraints l  amb execEnv
-      in (match typeL with
-          (TList [lType]) -> (lType, ([(TList [lType], TList [lType])]@lConstraints))
-        | _ -> failwith "L'espressione non è una lista")
-  | Tail l ->
-      let (lType,lConstraints) = getConstraints l amb execEnv
+             
+    | Fst(t) ->
+        let (tType, tConstrs) = getConstraints t typeEnv execEnv
+        in (match tType with
+                (TPair(typeL,typeR)) -> 
+                  (typeL, ([tType, TPair(typeL,typeR)]@(tConstrs)))
+              | TVar n ->
+                  let a = newvar()
+                  in (a, [tType, TPair(a,newvar())]@tConstrs)
+              | _ -> failwith "getConstraints:Fst - Espressione non valida")
+             
+    | Snd(t) ->
+        let (tType,tConstrs) = getConstraints t typeEnv execEnv
+        in (match tType with
+                (TPair(typeL,typeR)) -> 
+                  (typeR, ([(tType, TPair(typeL,typeR))]@(tConstrs)))
+              | TVar n -> 
+                  let a = newvar()
+                  in (a, [tType, TPair(newvar(),a)]@tConstrs)
+              | _ -> failwith "getConstraints:Snd - Espressione non valida")
+             
+    | Head l -> 
+        let (typeL, lConstraints) = getConstraints l typeEnv execEnv
+        in (match typeL with
+                (TList [lType]) -> (lType, ([(typeL, TList [lType])]@lConstraints))
+              | TVar n ->
+                  let a = newvar()
+                  in (a, ([(TList [a], typeL)]@lConstraints))
+              | _ -> failwith "getConstraints:Head - L'espressione non è una lista")
+             
+    | Tail l ->
+        let (lType,lConstraints) = getConstraints l typeEnv execEnv
         in (match lType with
                 (TList [typel]) -> (lType, (lConstraints))
-              | _ -> failwith "L'espressione non è una lista")
-  | Cons(t1,t2) ->
-      let ((t1Type, t1Constrs),(t2Type,t2Constrs)) = (getConstraints t1 amb execEnv, getConstraints t2 amb execEnv)
-        in (TList [t1Type], ([(t1Type,t1Type)]@
-                             [(t2Type, TList [t1Type])])@
+              | TVar n -> 
+                  let a = newvar()
+                  in (TList[lType], ([TList[a], lType]@lConstraints))
+              | _ -> failwith "L'espressione non è una lista")
+             
+             
+             
+    | Cons(t1,t2) ->
+        let ((t1Type, t1Constrs),(t2Type,t2Constrs)) = 
+          (getConstraints t1 typeEnv execEnv, getConstraints t2 typeEnv execEnv)
+        in (TList [t1Type], ([t1Type,t1Type]@
+                               [(t2Type, TList [t1Type])]@
                                (t1Constrs)@
-                               (t2Constrs))
-  | Empty -> (TList [newvar()], [])
-(* Inferenza per if-then-else *)
-  | Ifthenelse(b,t1,t2) ->
-      let ((bType,bConstrs),(t1Type,t1Constrs),(t2Type,t2Constrs)) = (getConstraints b amb execEnv,getConstraints t1 amb execEnv, getConstraints t2 amb execEnv)
+                               (t2Constrs))) 
+             
+    | Empty -> (TList [newvar()], [])
+        
+    | Ifthenelse(b,t1,t2) ->
+        let ((bType,bConstrs),(t1Type,t1Constrs),(t2Type,t2Constrs)) = 
+          (getConstraints b typeEnv execEnv,
+           getConstraints t1 typeEnv execEnv,
+           getConstraints t2 typeEnv execEnv)
         in  (t1Type, ([(bType,TBool)]@
-                      [(t1Type,t2Type)]@
-                      (bConstrs)@
-                      (t1Constrs)@
-                      (t2Constrs)))
-(* Inferenza per Let *)
-  | Let (name,t1,t2) -> 
-      let a = newvar() in
-        let (t1Type,t1Constrs) = (getConstraints t1 amb execEnv)
-          in let (t2Type,t2Constrs) = (getConstraints t2 (bindtyp amb name t1Type) execEnv)
-             in (t2Type, ([(t1Type, a)]@
-                           (t1Constrs)@
-                           (t2Constrs)))
- (* Inferenza per Fun *)
-  | Fun(x,t) ->
-      let a = newvar() in
-      let (tType, tConstrs) = getConstraints t (bindtyp amb x a) execEnv
-      in (TFun(a,tType), tConstrs)
-(* Inferenza per Appl *)
-  | Appl(t1,t2) ->
-      let a = newvar()
-      in let (t1Type, t1Constrs) = getConstraints t1 amb execEnv
-      in let (t2Type, t2Constrs) = getConstraints t2 amb execEnv
-      in (a, ([t1Type, TFun(t2Type,a)]@
-                (t1Constrs)@
-                (t2Constrs)))
+                        [t1Type,t2Type]@
+                        (bConstrs)@
+                        (t1Constrs)@
+                        (t2Constrs)))
+              
+    | Let (name,t1,t2) -> 
+        let a = newvar() in
+        let (t1Type,t1Constrs) = (getConstraints t1 typeEnv execEnv)
+        in let (t2Type,t2Constrs) = (getConstraints t2 (bindtyp typeEnv name t1Type) execEnv)
+        in (t2Type, ([(t1Type, a)]@
+                       (t1Constrs)@
+                       (t2Constrs)))
+             
+    | Fun(x,t) ->
+        let a = newvar() in
+        let (tType, tConstrs) = getConstraints t (bindtyp typeEnv x a) execEnv
+        in (TFun(a,tType),tConstrs)
+             
 
-(* Inferenza per Rec *)
-  | Rec(y,f) -> 
-      let a = newvar() in
-      let (tType, tConstrs) = getConstraints f (bindtyp amb y a) execEnv
-      in match tType with
-          TFun(xType,termType) -> (TFun(xType,termType), ([(TFun(xType,termType),a)]@tConstrs))
-          | _ -> failwith "Il secondo termine non è una funzione"
-(* Rompere solo in caso di incendio *)
-(*  | _ -> failwith "Tipo non inferibile (getConstraints)"*)
+    | Appl(t1,t2) ->
+        let a = newvar()
+        in let (t1Type, t1Constrs) = getConstraints t1 typeEnv execEnv
+        in let (t2Type, t2Constrs) = getConstraints t2 typeEnv execEnv
+        in (a, ([t1Type, TFun(t2Type,a)]@
+                  (t1Constrs)@
+                  (t2Constrs)))
+             
+    | Rec(y,f) -> 
+        (match f with
+             Fun(x,t) ->
+               let a = newvar() 
+               in let (fType, fConstrs) = 
+                   getConstraints f (bindtyp typeEnv y a) execEnv
+               in (fType, ([a,a]@fConstrs))
+           | _ -> failwith "getConstraints:Rec - Il secondo termine non è una funzione")
 ;;
 
 
-
-(* Se il tipo è inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
-let rec typeinf expr = let exprConstraints = getConstraints expr newtypenv emptyenv in
-let unifiedConstrs = solveConstraints (snd exprConstraints) in 
-(if unifiedConstrs = [] then fst exprConstraints else
-     solveRemainingConstrs  (fst exprConstraints) unifiedConstrs);;
-
-
+(* Se il tipo è inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
+let rec typeinf expr = 
+  let exprConstraints = getConstraints expr newtypenv emptyenv in
+  let unifiedConstrs = solveConstraints (snd exprConstraints) in 
+    (if unifiedConstrs = [] then fst exprConstraints else
+       solveRemainingConstrs  (fst exprConstraints) unifiedConstrs);;
 
 (* Se il tipo e inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
-let rec inferType expr typeEnv execEnv = let exprConstraints = getConstraints expr typeEnv execEnv in
-let unifiedConstrs = solveConstraints (snd exprConstraints) in 
-(if unifiedConstrs = [] then fst exprConstraints else
-     solveRemainingConstrs  (fst exprConstraints) unifiedConstrs);;
-
-
+let rec inferType expr typeEnv execEnv = 
+  let exprConstraints = getConstraints expr typeEnv execEnv in
+  let unifiedConstrs = solveConstraints (snd exprConstraints) in 
+    (if unifiedConstrs = [] then fst exprConstraints else
+       solveRemainingConstrs  (fst exprConstraints) unifiedConstrs);;
 
 
 
@@ -515,7 +546,6 @@ let rec sem (e:exp) (amb:env) =
                  in evaluate t2 newExecEnv newTypeEnv
              |  _ -> failwith "Funzione non valida")
       | _ -> failwith "Espressione non valida in sem"
-  in let isInferrable expr = try (true, inferType expr newtypenv amb) with _ -> (false, TVar "")
-  in if fst (isInferrable e) then evaluate e amb newtypenv else failwith "sem:isInferrable - Espressione non valida";;
+  in evaluate e amb newtypenv;;
 
- 
+
