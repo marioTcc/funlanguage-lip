@@ -227,11 +227,12 @@ let e5 =
                 Eq(Snd(Val(Ide "x")), Empty),
                 Cons(Fst(Val(Ide "x")), Empty),
 
-                Ifthenelse(Less(Fst(Val(Ide "x")), Head(Snd(Val(Ide "x")))),
-                           Cons(Fst(Val(Ide "x")), Snd(Val(Ide "x"))),
-                           Cons(Head(Snd(Val(Ide "x"))),
-                                Appl(Val(Ide "insertRec"), 
-                                     Epair(Fst(Val(Ide "x")), Tail(Snd(Val(Ide "x")))))))
+                Ifthenelse(
+                  Less(Fst(Val(Ide "x")), Head(Snd(Val(Ide "x")))),
+                  Cons(Fst(Val(Ide "x")), Snd(Val(Ide "x"))),
+                  Cons(Head(Snd(Val(Ide "x"))),
+                       Appl(Val(Ide "insertRec"), 
+                            Epair(Fst(Val(Ide "x")), Tail(Snd(Val(Ide "x")))))))
               ))),
           Let(Ide "sort",
               Rec(Ide "sortRec",
@@ -256,14 +257,6 @@ sem e5 emptyenv;;
 
 
 
-
-
-
-
-
-
-
-
 let e6 =
          Let(Ide "sort",
              Rec(Ide "sortRec",
@@ -283,7 +276,7 @@ sem e6 emptyenv;;
 
 
 
--sem (Ifthenelse(Eq(Val(Ide "y"), Empty), Empty, Tail(Val(Ide "y")))) (bind(emptyenv, Ide "y", List [Int 2;Int 5]));;
+sem (Ifthenelse(Eq(Val(Ide "y"), Empty), Empty, Tail(Val(Ide "y")))) (bind(emptyenv, Ide "y", List [Int 2;Int 5]));;
 let e7 =
   Let(Ide "sort",
       Rec(Ide "sortRec",
@@ -305,8 +298,7 @@ let e9 = Fun(Ide "x", Tail(Val(Ide "x")));;
 let e10 = Fun(Ide "x", Fst(Val(Ide "x")));;
 let e11 = Fun(Ide "x", Snd(Val(Ide "x")));;
 let e12 = Fun(Ide "x", Epair(Val(Ide "x"), Eint 2));;
-#trace inferType;;
-#trace getConstraints;;
+
 inferType e8 newtypenv emptyenv;;
 typeinf e8;;
 sem (Appl(e8,Cons(Eint 1, Empty))) emptyenv;;
@@ -324,8 +316,8 @@ applyenv ((snd(sem e12 emptyenv)), Ide "x") ;;
 typeinf e8;;
 typeinf (Head(True));;
 typeinf (Tail(Eint 2));;
-
-
+typeinf (Fst(Eint 2));;
+typeinf (Snd(Echar 'c'));;
 
 
 
@@ -366,3 +358,127 @@ typeinf (Fun(Ide "x", Head(Val(Ide "x"))));;
 typeinf (Fun(Ide "x", Tail(Val(Ide "x"))));;
 
 typeinf (Let(Ide "f", Fun(Ide "x", Sum(Eint 2, Val(Ide "x"))), Rec(Ide "r", Val(Ide "f"))));;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+let e5 = 
+  Let(Ide "insert",
+      Rec(Ide "insertRec",
+          Fun(Ide "x",
+              Ifthenelse(
+                Eq(Snd(Val(Ide "x")), Empty),
+                Cons(Fst(Val(Ide "x")), Empty),
+
+                Ifthenelse(
+                  Less(Fst(Val(Ide "x")), Head(Snd(Val(Ide "x")))),
+                  Cons(Fst(Val(Ide "x")), Snd(Val(Ide "x"))),
+                  Cons(Head(Snd(Val(Ide "x"))),
+                       Appl(
+                         Val(Ide "insertRec"), 
+                         Epair(Fst(Val(Ide "x")), Tail(Snd(Val(Ide "x"))))))
+                )
+              ))),
+          Let(Ide "sort",
+              Rec(Ide "sortRec",
+                  Fun(Ide "y",
+                      Ifthenelse(Eq(Val(Ide "y"), Empty),
+                                 Empty,
+                                 Appl(Val(Ide "insert"),
+                                      Epair(
+                                        Head(Val(Ide "y")),
+                                        Appl(Val(Ide "sortRec"), Tail(Val(Ide "y")))
+                                      ))      ))),
+              Appl(
+                Val(Ide "sort"),
+                Cons(Eint 3, Cons(Eint 4, Cons(Eint 1 ,Empty)))
+              )     ));;
+              
+                   
+typeinf e5;;
+sem e5 emptyenv;;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+let e12 =     
+  Rec(Ide "insertRec",
+      Fun(Ide "x",
+          Ifthenelse(
+            Eq(Snd(Val(Ide "x")), Empty),
+            Cons(Fst(Val(Ide "x")), Empty),
+            Ifthenelse(
+              Less(Fst(Val(Ide "x")), Head(Snd(Val(Ide "x")))),
+              Cons(Fst(Val(Ide "x")), Snd(Val(Ide "x"))),
+              Cons(Head(Snd(Val(Ide "x"))),
+                   Appl(
+                     Val(Ide "insertRec"), 
+                     Epair(Fst(Val(Ide "x")), Tail(Snd(Val(Ide "x"))))))
+            ) 
+          )));;
+
+
+
+typeinf e12;;
+
+
+typeinf ( 
+  Rec(Ide "k",
+      Fun(Ide "x",    
+          Ifthenelse(
+            Less(
+              Fst(Val(Ide "x")), 
+              Head(Snd(Val(Ide "x")))),
+            
+            Cons(
+              Fst(Val(Ide "x")), 
+              Snd(Val(Ide "x"))),
+            Cons(
+              Head(Snd(Val(Ide "x"))),
+              Appl(
+                Val(Ide "k"), 
+                Epair(Fst(Val(Ide "x")), Tail(Snd(Val(Ide "x")))))
+          )
+         ))));; 
+
+
+typeinf ( 
+  Rec(Ide "k",
+      Fun(Ide "x",    
+          Appl(
+            Val(Ide "k"), 
+            Snd(Val(Ide "x")))
+         )
+     ));; 
+
+typeinf (
+  Rec(Ide "y",
+      Fun(Ide "x",
+          Appl(
+            Val(Ide "y"),
+            Val(Ide "x")))));;
