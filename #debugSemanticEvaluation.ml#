@@ -157,7 +157,7 @@ in if not (snd result) then "Tutto OK" else "La "^string_of_int (fst result)^" n
 testGiusteScoppio giuste;; (* se va tutto bene, le espressioni "giuste" sono tutte inferibili *)
 
 (* NON USARE se non si passa il test anti-scoppio *)
-testGiuste giuste;;  (* verifica se il risultato di typeinf Ë quello atteso *)
+testGiuste giuste;;  (* verifica se il risultato di typeinf ÅË quello atteso *)
 
 testSbagliate sbagliate;; (* verifica che nessuna espressione "sbagliata" venga inferita come giusta *)
 
@@ -563,3 +563,17 @@ sem(Cons(Appl(Fun(Ide "x",Sum(Val(Ide "x"),Eint 4)),Val(Ide "x")),Cons(Appl(Fun(
     Cons(Appl(Fun(Ide "z",Sum(Val(Ide "z"),Eint 12)),Val(Ide "z")),Empty))))
   (bind(bind(bind(emptyenv,Ide "z",Int 1),Ide "y",Int 1),Ide "x",Int 1));;
 
+sem(
+  Appl(
+    Rec(Ide "recoursive",
+        Fun(Ide "x",
+            Ifthenelse(Eq(Tail(Val(Ide "x")),Empty),
+                       Head(Val(Ide "x")),
+                       Appl(
+                         Val(Ide "recoursive"),
+                         Tail(Val(Ide "x")))
+                      ))),
+    Val(Ide "x")))
+
+  
+  (bind(emptyenv,Ide "x",List[(Int 3);(Int 5);(Int 2);(Int 1)]));;
