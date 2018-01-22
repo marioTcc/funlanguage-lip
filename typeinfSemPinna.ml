@@ -274,17 +274,16 @@ let rec getConstraints expr typeEnv execEnv =
                   let a = newvar()
                   in (a, ([(TList [a], typeL)]@lConstraints))
               | _ -> failwith "getConstraints:Head - L'espressione non è una lista")
-             
+
     | Tail l ->
         let (lType,lConstraints) = getConstraints l typeEnv execEnv
         in (match lType with
                 (TList [typel]) -> (lType, (lConstraints))
               | TVar n -> 
                   let a = newvar()
-                  in (TList[lType], ([TList[a], lType]@lConstraints))
+                  in (lType, ([TList[a], lType]@lConstraints))
               | _ -> failwith "L'espressione non è una lista")
-             
-             
+            
              
     | Cons(t1,t2) ->
         let ((t1Type, t1Constrs),(t2Type,t2Constrs)) = 
