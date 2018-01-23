@@ -562,4 +562,3 @@ sem(Epair(Epair(Head(Cons(Appl(Fun(Ide "x",Sum(Val(Ide "x"),Eint 12)),Val(Ide "x
 sem(Cons(Appl(Fun(Ide "x",Sum(Val(Ide "x"),Eint 4)),Val(Ide "x")),Cons(Appl(Fun(Ide "y",Sum(Val(Ide "y"),Eint 1)),Val(Ide "y")),
     Cons(Appl(Fun(Ide "z",Sum(Val(Ide "z"),Eint 12)),Val(Ide "z")),Empty))))
   (bind(bind(bind(emptyenv,Ide "z",Int 1),Ide "y",Int 1),Ide "x",Int 1));;
-

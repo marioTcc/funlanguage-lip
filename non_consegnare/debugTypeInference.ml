@@ -1,7 +1,7 @@
 
 let filename = "<Inserire nome file typeing qui>";;
-(* #use "typingg10.ml";; *)
-#use "typeinfSemPinna.ml";;
+#use "typingg10.ml";;
+
 
 (* Vari tests *)
 let giuste = 
@@ -242,5 +242,4 @@ testGiusteScoppio giuste;; (* se va tutto bene, le espressioni "giuste" sono tut
 testGiuste giuste;;  (* verifica se il risultato di typeinf è quello atteso *)
 
 testSbagliate sbagliate;; (* verifica che nessuna espressione "sbagliata" venga inferita come giusta *)
-
 
