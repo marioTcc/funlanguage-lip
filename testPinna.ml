@@ -214,3 +214,14 @@ tipo: etype = TList [TInt]
 valore: eval = List [Int 5; Int 4; Int 3; Int 2; Int 1]  *)
 typeinf test18;;
 sem test18 emptyenv;;            
+
+
+(* TEST scope statico *)
+let test19 = Let(Ide "x",Eint 1,
+    Let(Ide "f",Fun(Ide "y",Sum(Val(Ide "y"),Val(Ide "x"))),
+        Let(Ide "x", Eint 2, Appl(Val(Ide "f"),Eint 0))));;
+(* tipo: TInt
+   valore: eval = Int 1 *)
+sem test19 emptyenv;;
+
+

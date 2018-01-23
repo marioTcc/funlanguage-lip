@@ -459,8 +459,6 @@ let rec substRec newVal oldVal expr = match expr with
   | _ -> failwith "substRec: Errore nella sostituzione Rec";;
 
 
-
-
 let rec sem (e:exp) (amb:env) =
   let rec evaluate (e:exp) (amb:env) (typeEnv:(ide*etype)list) =
     match e with
@@ -470,73 +468,91 @@ let rec sem (e:exp) (amb:env) =
       | True -> Bool true
       | False -> Bool false
       | Empty -> List []
+
       | Cons(a,b) -> 
           let result = cons(evaluate a amb typeEnv, evaluate b amb typeEnv)
           in let isConsable = try (true, inferType e typeEnv amb) with _ -> (false, TVar "")
           in if fst isConsable then result else failwith "Type error in Cons"
+
       | Head a -> head (evaluate a amb typeEnv) 
       | Tail a -> tail (evaluate a amb typeEnv) 
+
       | Epair(a,b) -> pair (evaluate a amb typeEnv, evaluate b amb typeEnv) 
+
       | Fst(p) -> (match evaluate p amb typeEnv with
                       Pair(a,b) -> a
                     | _ -> failwith "errore sem:Fst, valore in ambiente non coppia")
       | Snd(p) -> (match evaluate p amb typeEnv with
+
                       Pair(a,b) -> b
                     | _ -> failwith "errore sem:Fst, valore in ambiente non coppia")
+
       | Eq(a,b) -> 
-          let typeCheck = (inferType a typeEnv amb, inferType b typeEnv amb)
-          in if typeEquality (fst typeCheck) (snd typeCheck)
+          let typeCheck = try (true, inferType e typeEnv amb) with _ -> (false, TVar "")
+          in if fst typeCheck
             then eq(evaluate a amb typeEnv, evaluate b amb typeEnv)
             else failwith "Type error in Eq"
+
       | Times(a,b) -> 
-          let typeCheck = (inferType a typeEnv amb, inferType b typeEnv amb)
-          in if fst typeCheck = snd typeCheck && fst typeCheck = TInt 
+          let typeCheck = try (true, inferType e typeEnv amb) with _ -> (false, TVar "")
+          in if fst typeCheck
             then times(evaluate a amb typeEnv, evaluate b amb typeEnv)
             else failwith "Type error in Times"
-      | Sum(a,b) -> 
-          let typeCheck = (inferType a typeEnv amb, inferType b typeEnv amb)
-          in if fst typeCheck = snd typeCheck && fst typeCheck = TInt
+
+      | Sum(a,b) ->
+          let typeCheck = try (true, inferType e typeEnv amb) with _ -> (false, TVar "")
+          in if fst typeCheck 
             then sum(evaluate a amb typeEnv, evaluate b amb typeEnv)
             else failwith "Type error in Sum"
+
       | Diff(a,b) -> 
-          let typeCheck = (inferType a typeEnv amb, inferType b typeEnv amb)
-          in if fst typeCheck = snd typeCheck && fst typeCheck = TInt
+          let typeCheck = try (true, inferType e typeEnv amb) with _ -> (false, TVar "")
+          in if fst typeCheck
             then diff(evaluate a amb typeEnv, evaluate b amb typeEnv)
             else failwith "Type error in Diff"
+
       | And(a,b) -> 
-          let typeCheck = (inferType a typeEnv amb, inferType b typeEnv amb)
-          in if fst typeCheck = snd typeCheck && fst typeCheck = TBool
+          let typeCheck = try (true, inferType e typeEnv amb) with _ -> (false, TVar "")
+          in if fst typeCheck
             then logicAnd(evaluate a amb typeEnv, evaluate b amb typeEnv)
             else failwith "Type error in And"
+
       | Or(a,b) -> 
-          let typeCheck = (inferType a typeEnv amb, inferType b typeEnv amb)
-          in if fst typeCheck = snd typeCheck && fst typeCheck = TBool
+          let typeCheck = try (true, inferType e typeEnv amb) with _ -> (false, TVar "")
+          in if fst typeCheck
             then logicOr(evaluate a amb typeEnv, evaluate b amb typeEnv)
             else failwith "Type error in Or"
+
       | Less(a,b) -> 
-          let typeCheck = (inferType a typeEnv amb, inferType b typeEnv amb)
-          in if fst typeCheck = snd typeCheck && fst typeCheck = TInt
+          let typeCheck = try (true, inferType e typeEnv amb) with _ -> (false, TVar "")
+          in if fst typeCheck
             then less(evaluate a amb typeEnv, evaluate b amb typeEnv)
             else failwith "Type error in Less"
-      | Not(a) ->  
-          let typeCheck = inferType a typeEnv amb
-          in if typeCheck = TBool
+
+      | Not(a) ->
+          let typeCheck = try (true, inferType e typeEnv amb) with _ -> (false, TVar "")
+          in if fst typeCheck
             then unaryNegation(evaluate a amb typeEnv)
             else failwith "Type error in Not"
+
       | Ifthenelse(a,b,c) -> 
-          let (boolGuardT, retT1, retT2) = (inferType a typeEnv amb, inferType b typeEnv amb, inferType c typeEnv amb)
-          in if boolGuardT = TBool && typeEquality retT1 retT2
+          let typeCheck = try (true, inferType e typeEnv amb) with _ -> (false, TVar "")
+          in if fst typeCheck
             then (if evaluate a amb typeEnv = Bool true then evaluate b amb typeEnv else evaluate c amb typeEnv)
             else failwith "Type error in Ifthenelse"
+
       | Let(a,b,c) -> 
           let newTypeEnv = bindtyp typeEnv a (inferType b typeEnv amb)
           in let newExecEnv = bind (amb, a, (evaluate b amb typeEnv))
           in evaluate c newExecEnv newTypeEnv 
+
       | Fun(a,b) -> 
           Closure(Fun(a,b), calcFV b amb emptyenv) 
+
       | Rec(a,(Fun(x,t))) -> 
           let tSubst = substRec (Rec(a,Fun(x,t))) a t in
             Closure(Fun(x,tSubst), calcFV tSubst amb emptyenv)
+
       | Appl(a,b) -> 
           (match evaluate a amb typeEnv with
                Closure(Fun(x2,t2), amb_locale) ->
