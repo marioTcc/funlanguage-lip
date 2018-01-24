@@ -42,6 +42,16 @@ type exp =
   | Appl of exp * exp 
   | Rec of ide * exp;;
 
+type eval =
+  Undefined
+| Int of int
+| Bool of bool
+| Char of char
+| List of eval list
+| Pair of eval * eval
+| Closure of exp * env
+and
+env = ide -> eval;;
 
 (* Definizione ambiente per i tipi *)
 let newtypenv = ([]:(ide*etype)list) ;;
