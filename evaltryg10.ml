@@ -345,7 +345,7 @@ let rec getConstraints expr typeEnv execEnv =
           getConstraints e2 typeEnv execEnv
         in let (e1Type, e1Constrs) = 
           getConstraints e1 (bindtyp typeEnv n e2Type) execEnv
-        in (e2Type, [e1Type, e2Type]@[])
+        in (e2Type, [e1Type, e2Type]@e1Constrs@e2Constrs)
         
     | Raise t ->
         (applytypenv typeEnv t, [])
@@ -523,3 +523,4 @@ let rec semtry (e:exp) (amb:env) =
 
             else failwith "sem:All - Type error in sem"
   in evaluate e amb emptyStack;;
+
