@@ -331,7 +331,7 @@ let rec getConstraints expr typeEnv execEnv =
 ;;
 
 
-(* Se il tipo e inferibile, ovvero rispetta le regole (verificato da solveConstraints), allora restituisci il suo tipo *)
+(* Se il tipo e inferibile, ovvero rispetta le regole, allora restituisci il suo tipo *)
 let rec inferType expr execEnv = 
   let exprConstraints = getConstraints expr newtypenv execEnv in
   let unifiedConstrs = solveConstraints (snd exprConstraints) in 

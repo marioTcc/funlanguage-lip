@@ -165,218 +165,8 @@ testSbagliate sbagliate;; (* verifica che nessuna espressione "sbagliata" venga 
 
 
 
-sem (Cons(Cons(Fun(Ide "x", Val(Ide "x")), Empty), Cons(Cons(Fun(Ide "x", Sum(Val(Ide"x"), Eint 3)), Empty), Empty))) emptyenv;;
 
-
-
-let r1 = Rec(Ide "y", 
-             Fun(Ide "x", 
-                 Ifthenelse(
-                   Eq(Val(Ide "x"), Eint 0),
-                   Cons(Eint 5, Empty),
-                   Cons(Val(Ide "x"),Appl(Val(Ide "y"), Diff(Val(Ide "x"), Eint 1))))));;
-
-typeinf r1;;
-sem r1 emptyenv;;
-
-sem (Appl(Val(Ide "r1"), Val(Ide "r2"))) (bind(bind(emptyenv,Ide "r1", sem r1 emptyenv), Ide "r2", Int 150));;
-
-let expr1 = 
-  Let(Ide "y", 
-      Eint 755,
-),
-       ;;
-
-let e1 = Fun(Ide "x",Fun(Ide "z",Val(Ide "y")));;
-let e2 = Let(Ide "y",Eint 3,(Appl(Val(Ide "f1"), Eint 321)));;
-
-sem (Appl(e2,Echar 'c')) (bind(emptyenv, Ide "f1", sem e1 (bind(emptyenv, Ide "y", Int 755))));;
-
-
-
-let e3 = 
-  Let(Ide "y", Eint 10,
-      Let(Ide "f", Fun(Ide "x", Cons(Val (Ide "y"), Empty)),
-          Let(Ide "g", 
-              Fun(Ide "z", Let(Ide "y", True, Appl(Val (Ide "z"),Empty))),
-              Appl(Val(Ide "g"),Val(Ide "f")))));;
-
-sem e3 emptyenv;;
-
-
-let e4 = 
-  Let(Ide "f", 
-      Rec(Ide "fatt", 
-          Fun(Ide "x",
-              Ifthenelse(Eq(Val(Ide "x"), Eint 0),
-                         Eint 1,
-                         Times(Val(Ide "x"),
-                               Appl(Val(Ide "fatt"),
-                                    Diff(Val(Ide "x"),Eint 1)))))),
-      Appl(Val(Ide "f"), Val(Ide "n")));;
-
-
-sem e4 (bind(emptyenv,Ide "n", Int 25));;
-
-
-let e5 = 
-  Let(Ide "insert",
-      Rec(Ide "insertRec",
-          Fun(Ide "x",
-              Ifthenelse(
-                Eq(Snd(Val(Ide "x")), Empty),
-                Cons(Fst(Val(Ide "x")), Empty),
-
-                Ifthenelse(
-                  Less(Fst(Val(Ide "x")), Head(Snd(Val(Ide "x")))),
-                  Cons(Fst(Val(Ide "x")), Snd(Val(Ide "x"))),
-                  Cons(Head(Snd(Val(Ide "x"))),
-                       Appl(Val(Ide "insertRec"), 
-                            Epair(Fst(Val(Ide "x")), Tail(Snd(Val(Ide "x")))))))
-              ))),
-          Let(Ide "sort",
-              Rec(Ide "sortRec",
-                  Fun(Ide "y",
-                      Ifthenelse(Eq(Val(Ide "y"), Empty),
-                                 Empty,
-                                 Appl(Val(Ide "insert"),
-                                      Epair(
-                                        Head(Val(Ide "y")),
-                                        Appl(Val(Ide "sortRec"), Tail(Val(Ide "y")))
-                                      ))))),
-              Appl(
-                Val(Ide "sort"),
-                Cons(Eint 3, Cons(Eint 4, Cons(Eint 1 ,Empty)))
-              )));;
-                                 
-
-
-sem e5 emptyenv;;
-
-
-
-
-
-let e6 =
-         Let(Ide "sort",
-             Rec(Ide "sortRec",
-                 Fun(Ide "y",
-                     Ifthenelse(Eq(Val(Ide "y"), Empty),
-                                Appl(Val(Ide "sortRec"), Tail(Val(Ide "y")))
-                                       ,
-                                Cons(Eint 2, Empty)
-
-                    ))),
-             Appl(
-               Val(Ide "sort"),
-               Cons(Eint 3, Cons(Eint 4, Cons(Eint 1 ,Empty)))
-             ));;
-
-sem e6 emptyenv;;
-
-
-
-sem (Ifthenelse(Eq(Val(Ide "y"), Empty), Empty, Tail(Val(Ide "y")))) (bind(emptyenv, Ide "y", List [Int 2;Int 5]));;
-let e7 =
-  Let(Ide "sort",
-      Rec(Ide "sortRec",
-          Fun(Ide "y",
-              Ifthenelse(Eq(Val(Ide "y"), Empty),
-                         Appl(Val(Ide "sortRec"), Tail(Val(Ide "y")))
-                           ,
-                         Cons(Eint 123, Empty)
-                        ))),
-      Appl(Val(Ide "sort"), Cons(Eint 3, Empty)));;
-      
-
-
-typeinf e7;;
-sem e7 emptyenv;;
-
-let e8 = (Fun(Ide "x", Head(Val(Ide "x")) ));;
-let e9 = Fun(Ide "x", Tail(Val(Ide "x")));;
-let e10 = Fun(Ide "x", Fst(Val(Ide "x")));;
-let e11 = Fun(Ide "x", Snd(Val(Ide "x")));;
-let e12 = Fun(Ide "x", Epair(Val(Ide "x"), Eint 2));;
-
-inferType e8 newtypenv emptyenv;;
-typeinf e8;;
-sem (Appl(e8,Cons(Eint 1, Empty))) emptyenv;;
-sem (Appl(e9,Cons(Eint 2, Cons(Eint 3, Empty)))) emptyenv;;
-sem (Appl(e10,Epair(Eint 2, Eint 5))) emptyenv;;
-sem e11 emptyenv;;
-sem e12 emptyenv;;
-
-
-
-match sem e12 emptyenv with
-    Closure(a,b) -> applyenv (b,Ide "x");;
-
-applyenv ((snd(sem e12 emptyenv)), Ide "x") ;;
-typeinf e8;;
-typeinf (Head(True));;
-typeinf (Tail(Eint 2));;
-typeinf (Fst(Eint 2));;
-typeinf (Snd(Echar 'c'));;
-
-
-
-let e423 =
-  Rec(Ide "insertRec",
-      Fun(Ide "x",
-          Ifthenelse(Eq(Snd(Val(Ide "x")), Empty),
-                     Cons(Fst(Val(Ide "x")), Empty),
-                     Snd(Val(Ide "x"))
-                    )));;
-
-let e423 = Fun(Ide "x", Epair(Fst(Val(Ide "x")), Less(Fst(Val(Ide "x")), Head(Snd(Val(Ide "x"))))));;
-
-sem (Appl(e423,Epair(Eint 2, Cons(Eint 3, Empty)))) emptyenv;;
-typeinf e423;;
-
-inferType (Rec(Ide "chezzi", Fun(Ide "x", Fst(Val(Ide "x"))))) newtypenv emptyenv;;
-
-
-sem        (Let(Ide "sort",
-                Rec(Ide "sortRec",
-                    Fun(Ide "y",
-                        Ifthenelse(Eq(Val(Ide "y"), Empty),
-                                   Empty,
-                                   Appl(Val(Ide "insert"),
-                                        Epair(
-                                          Head(Val(Ide "y")),
-                                          Appl(Val(Ide "sort"), Tail(Val(Ide "y")))
-                                        ))))),
-                Appl(
-                  Val(Ide "sort"),
-                  Cons(Eint 3, Cons(Eint 4, Cons(Eint 1 ,Empty)))))) emptyenv;;
-
-
-typeinf (Fun(Ide "x", Sum(Eint 2, Fst(Val(Ide "x")))));;
-typeinf (Fun(Ide "x", Snd(Val(Ide "x"))));;
-typeinf (Fun(Ide "x", Head(Val(Ide "x"))));;
-typeinf (Fun(Ide "x", Tail(Val(Ide "x"))));;
-
-typeinf (Let(Ide "f", Fun(Ide "x", Sum(Eint 2, Val(Ide "x"))), Rec(Ide "r", Val(Ide "f"))));;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-let e5 = 
+let sortList = 
   Let(Ide "insert",
       Rec(Ide "insertRec",
           Fun(Ide "x",
@@ -409,79 +199,12 @@ let e5 =
               )     ));;
               
                    
-typeinf e5;;
-sem e5 emptyenv;;
+typeinf sortList;;
+sem sortList emptyenv;;
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-let e12 =     
-  Rec(Ide "insertRec",
-      Fun(Ide "x",
-          Ifthenelse(
-            Eq(Snd(Val(Ide "x")), Empty),
-            Cons(Fst(Val(Ide "x")), Empty),
-            Ifthenelse(
-              Less(Fst(Val(Ide "x")), Head(Snd(Val(Ide "x")))),
-              Cons(Fst(Val(Ide "x")), Snd(Val(Ide "x"))),
-              Cons(Head(Snd(Val(Ide "x"))),
-                   Appl(
-                     Val(Ide "insertRec"), 
-                     Epair(Fst(Val(Ide "x")), Tail(Snd(Val(Ide "x"))))))
-            ) 
-          )));;
-
-
-
-typeinf e12;;
-
-
-typeinf ( 
-  Rec(Ide "k",
-      Fun(Ide "x",    
-          Ifthenelse(
-            Less(
-              Fst(Val(Ide "x")), 
-              Head(Snd(Val(Ide "x")))),
-            
-            Cons(
-              Fst(Val(Ide "x")), 
-              Snd(Val(Ide "x"))),
-            Cons(
-              Head(Snd(Val(Ide "x"))),
-              Appl(
-                Val(Ide "k"), 
-                Epair(Fst(Val(Ide "x")), Tail(Snd(Val(Ide "x")))))
-          )
-         ))));; 
-
-
-typeinf ( 
-  Rec(Ide "k",
-      Fun(Ide "x",    
-          Appl(
-            Val(Ide "k"), 
-            Snd(Val(Ide "x")))
-         )
-     ));; 
-
-typeinf (
-  Rec(Ide "y",
-      Fun(Ide "x",
-          Appl(
-            Val(Ide "y"),
-            Val(Ide "x")))));;
 
 
 (* 1 *)
@@ -528,7 +251,7 @@ sem(Fun(Ide "x",Times(Sum(Val(Ide "x"),Val(Ide "y")),Val(Ide "z"))))
 sem(
   Cons(Epair(Val(Ide "x"),Eint 3),Cons(Epair(Sum(Val(Ide "x"),Eint 1),Eint 4),Cons(Epair(Diff(Val(Ide "y"),Val(Ide "x")),Eint 0),Empty))))
   (bind(bind(emptyenv,Ide "y",Int 4),Ide "x",Int 5));;
-(* 13   questo non funziona*)
+(* 13 *)
 sem(Sum(Appl(Fun(Ide "y",Fst(Val(Ide "y"))),Val(Ide "y")),Appl(Fun(Ide "x",Val(Ide "x")),Val(Ide "x"))))
   (bind(bind(emptyenv,Ide "y",Pair(Int 3,Char 'f')),Ide "x",Int 1));;
 (* 14 *)
@@ -562,3 +285,142 @@ sem(Epair(Epair(Head(Cons(Appl(Fun(Ide "x",Sum(Val(Ide "x"),Eint 12)),Val(Ide "x
 sem(Cons(Appl(Fun(Ide "x",Sum(Val(Ide "x"),Eint 4)),Val(Ide "x")),Cons(Appl(Fun(Ide "y",Sum(Val(Ide "y"),Eint 1)),Val(Ide "y")),
     Cons(Appl(Fun(Ide "z",Sum(Val(Ide "z"),Eint 12)),Val(Ide "z")),Empty))))
   (bind(bind(bind(emptyenv,Ide "z",Int 1),Ide "y",Int 1),Ide "x",Int 1));;
+
+(*******************************************************************************************************************************************)
+(****************************************SECONDROUND****************************************************************************************)
+(*******************************************************************************************************************************************)
+(* 1 *)
+
+sem(Sum(Appl(Fun(Ide "y",Fst(Val(Ide "y"))),Val(Ide "y")),Appl(Fun(Ide "x",Val(Ide "x")),Val(Ide "x"))))
+ (bind(bind(emptyenv,Ide "y",Pair(Int 3,Char 'f')),Ide "x",Int 1));;
+
+(* 2 *)
+
+sem(Sum(Appl(Fun(Ide "x",Fst(Val(Ide "x"))),Val(Ide "x")),Appl(Fun(Ide "y",Snd(Val(Ide "y"))),Val(Ide "y"))))
+  (bind(bind(emptyenv,Ide "x",Pair(Int 12,Char 'f')),Ide "y",Pair(Char 'a',Int 8)));;
+
+(* 3 *)
+
+sem(
+  Ifthenelse(Eq(Val(Ide "x"),Appl(Fun(Ide "z",Snd(Val(Ide "z"))),Val(Ide "z"))),
+	       Sum(Appl(Fun(Ide "y",Times(Val(Ide "y"),Eint 2)),Val(Ide "y")),Eint 2),
+	     Ifthenelse(Eq(Appl(Fun(Ide "z",Fst(Val(Ide "z"))),Val(Ide "z")),Eint 5),
+			Val(Ide "x"),
+			Val(Ide "y"))))
+  (bind(bind(bind(emptyenv,Ide "x",Int 4),Ide "y",Int 1),Ide "z",Pair(Int 5,Int 2)));;
+
+(* 4 *)
+
+sem(Let(Ide "fact",Rec(Ide "fact", Fun(Ide "x", Ifthenelse(
+  Eq(Val(Ide "x"), Eint 0), Eint 1,
+        Times(Val(Ide "x"), Appl (Val(Ide "fact"), Diff(Val(Ide "x"), Eint 1)))))),
+        Appl(Val(Ide "fact"),Eint 5))) emptyenv;;
+
+(* 5 *)
+
+sem(Cons(Fun(Ide "x",Sum(Val(Ide "x"),Eint 1)),
+	 Cons(Fun(Ide "y",Diff(Val(Ide "y"),Eint 1)),Empty)))
+  (bind(bind(emptyenv,Ide "x",Int 1),Ide "y",Int 2));;
+
+(* 6 *)
+
+sem(Appl(Fun(Ide "x",Tail(Tail(Tail(Val(Ide "x"))))),Val(Ide "x")))
+  (bind(emptyenv,Ide "x",List[(Int 2);(Int 3);(Int 4);(Int 5)]));;
+
+(* 7 *)
+
+sem(Appl(Fun(Ide "y",
+	     Appl(Fun(Ide "x",
+		      Sum(Val(Ide "x"), Head(Val(Ide "y")))),
+		  Val(Ide "x"))),
+	     Val(Ide "y")))
+  (bind(bind(emptyenv,Ide "x",Int 2),Ide "y",List[(Int 3);(Int 4)]));;
+
+(* 8 *)
+
+sem(Ifthenelse(Eq(Val(Ide "x"),Eint 0),
+	       Val(Ide "y"),
+	       Appl(Fun(Ide "y",Sum(Val(Ide "y"),Eint 2)),Val(Ide "y"))))
+      (bind(bind(emptyenv,Ide "x",Int 5),Ide "y",Int 0));;
+
+(* 9 *)
+
+sem(Appl(Fun(Ide "z",
+  Ifthenelse(Eq(Appl(Fun(Ide "x",Val(Ide "x")),Val(Ide "x")),Eint 0),
+	     Val(Ide "z"),Sum(Val(Ide "z"),Eint 6))),(Diff(Val(Ide "x"),Eint 1))))
+  (bind(bind(bind(emptyenv,Ide "x",Int 10),Ide "y",Int 0),Ide "z",Int 0));;
+
+(* 10 *)
+
+sem(Ifthenelse(
+  Eq(Appl(Fun(Ide "x",Head(Val(Ide "x"))),Val(Ide "x")),Echar 'f'),
+  Cons(Fst(Head(Tail(Val(Ide "y")))),Empty),
+  Cons(Echar 'w',Cons(Snd(Head(Val(Ide "z"))),Empty))))
+  (bind(bind(bind(emptyenv,Ide "x",List[(Char 'a');(Char 'g')]),
+	     Ide "y",List[(Pair((Char 'a'),(Char 'b')));
+			   (Pair((Char 'c'),(Char 'd')));
+			   (Pair((Char 'e'),(Char 'f')))]),
+	Ide "z",List[(Pair((Int 2),(Char 'g')))]));;
+
+(* 11 *)
+
+sem(Appl(Fun(Ide "z",Diff(Times(Sum(Head(Val(Ide "w")),Val(Ide "z")),Val(Ide "x")),Val(Ide "y"))),Val(Ide "z")))
+(bind(bind(bind(bind(emptyenv,Ide "x",Int 1),Ide "y",Int 1),Ide "z",Int 1),Ide "w",List[(Int 2);(Int 4);(Int 6)]));;
+
+(* 12 *)
+
+sem(Appl(
+  Rec(Ide "recoursive",
+      Fun(Ide "x",
+	  Ifthenelse(Eq(Tail(Val(Ide "x")),Empty),
+        Head(Val(Ide "x")),
+        Appl(Val(Ide "recoursive"),Tail(Val(Ide "x")))))),Val(Ide "x")))
+  (bind(emptyenv,Ide "x",List[(Int 3);(Int 5);(Int 2);(Int 1)]));;
+
+(* 13 *)
+
+sem(Appl(
+  Rec(Ide "recoursive",
+      Fun(Ide "x",
+	  Ifthenelse(Eq(Tail(Val(Ide "x")),Empty),
+        Fst(Head(Val(Ide "y"))),
+       Appl(Val(Ide "recoursive"),Tail(Val(Ide "x")))))),Val(Ide "x")))
+  
+  (bind(bind(emptyenv,Ide "x",List[(Int 3);(Int 5);(Int 2);(Int 1)]),Ide "y",
+   List[(Pair((Int 7),(Char 'f')));(Pair((Int 3),(Char 'q')))]));;
+
+(* 14 *)
+
+sem(Ifthenelse(Eq(
+  Sum(Head(Appl(Fun(Ide "x",Tail(Val(Ide "x"))),Val(Ide "x"))),Eint 2),Eint 3),
+ Ifthenelse(Eq(Val(Ide "y"),Echar 'f'),
+	    Appl(Fun(Ide "z",Times(Val(Ide "w"),Sum(Val(Ide "z"),Eint 1))),
+		 Val(Ide "z")),
+	    Appl(Fun(Ide "k",Diff(Val(Ide "k"),Times(Val(Ide "z"),Eint 2))),
+		 Head(Val(Ide "x")))),
+	       Val(Ide "q")))
+  (bind(
+    bind(
+      bind(
+	bind(
+	  bind(
+	    bind(emptyenv,Ide "x",List[(Int 2);(Int 5);(Int 7)]),
+	    Ide "y",Char 'g'),
+	  Ide "z",Int 6),
+	Ide "w",Int 30),
+      Ide "k",Int 1),
+    Ide "q",Int 500));;
+
+(* 15 *)
+
+sem(Eq(Snd(Val(Ide "x")),Tail(Val(Ide "y"))))
+  (bind(bind(emptyenv,Ide "x",Pair(List[],List[])),Ide "y",List[(Int 1)]));;
+
+(* 16 *)
+
+sem(Eq(Snd(Val(Ide "x")),Tail(Val(Ide "y"))))
+(bind(bind(emptyenv,Ide "x",Pair(List[],List[])),Ide "y",List[(Int 1);(Int 2)]));;
+
+
+
+

@@ -1,4 +1,4 @@
-#use "typeinfSemPinna.ml";;
+#use "typingg10.ml";;
 (* Di seguito trovate alcuni test. La maggior parte devono, per così dire, passare. Alcuni no. *)
 (* Non compaiono esempi per il Try che verranno aggiunti presto. 
 Non sono in ordine d'importanza e dopo ciascuno viene indicato il risultato che dovete ottenere sia con la type_inference che con la  sem. *)
@@ -222,6 +222,7 @@ let test19 = Let(Ide "x",Eint 1,
         Let(Ide "x", Eint 2, Appl(Val(Ide "f"),Eint 0))));;
 (* tipo: TInt
    valore: eval = Int 1 *)
+typeinf test19;;
 sem test19 emptyenv;;
 
 
