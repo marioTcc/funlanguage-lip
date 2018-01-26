@@ -123,11 +123,11 @@ let rec getType expType (t1,t2) = match expType with
   | TList [l] -> TList [getType l (t1,t2)]
   | _ -> failwith "getType - Errore";;
 
-(* Valuta se sia possibile risolvere i vincoli rimanenti e inferire il tipo dell'espressione *) 
-let rec solveRemainingConstrs expType remConstrs = match remConstrs with
+
+let rec substInResult expType remConstrs = match remConstrs with
     [] -> expType
   | (TVar name, expr)::tl -> 
-      solveRemainingConstrs (getType expType (name, expr)) tl
+      substInResult (getType expType (name, expr)) tl
   | _ -> failwith "Tipo non inferibile (solving)";;
 
 (* Risolve i vincoli (entry point dell'algoritmo di unificazione) *)
@@ -356,7 +356,7 @@ let rec inferType expr execEnv =
   let exprConstraints = getConstraints expr newtypenv execEnv in
   let unifiedConstrs = solveConstraints (snd exprConstraints) in 
     (if unifiedConstrs = [] then fst exprConstraints else
-       solveRemainingConstrs  (fst exprConstraints) unifiedConstrs);;
+       substInResult  (fst exprConstraints) unifiedConstrs);;
 
 
 

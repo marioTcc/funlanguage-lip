@@ -108,21 +108,23 @@ in List.fold_right (fun x acc -> (substValue newVal oldVal (fst x), substValue n
 
 
 (* Valuta il tipo dell'espressione rispetto al vincolo (t1,t2) *)
-let rec getType expType (t1,t2) = match expType with
-    TInt -> TInt
-  | TBool -> TBool
-  | TChar -> TChar
-  | TVar name -> if name = t1 then t2 else TVar name
-  | TFun (t3,t4) -> TFun (getType t3 (t1,t2) , getType t4 (t1,t2))
-  | TPair(t3,t4) -> TPair (getType t3 (t1,t2), getType t4 (t1,t2))
-  | TList [l] -> TList [getType l (t1,t2)]
-  | _ -> failwith "Errore";;
+let rec getType expType (t1,t2) = 
+  match expType with
+      TInt -> TInt
+    | TBool -> TBool
+    | TChar -> TChar
+    | TVar name -> if name = t1 then t2 else TVar name
+    | TFun (t3,t4) -> TFun (getType t3 (t1,t2) , getType t4 (t1,t2))
+    | TPair(t3,t4) -> TPair (getType t3 (t1,t2), getType t4 (t1,t2))
+    | TList [l] -> TList [getType l (t1,t2)]
+    | _ -> failwith "Errore";;
 
-(* Valuta se sia possibile risolvere i vincoli rimanenti e inferire il tipo dell'espressione *) 
-let rec solveRemainingConstrs expType remConstrs = match remConstrs with
-    [] -> expType
-  | (TVar name, expr)::tl -> solveRemainingConstrs (getType expType (name, expr)) tl
-  | _ -> failwith "Tipo non inferibile (solving)";;
+
+let rec substInResult expType remConstrs = 
+  match remConstrs with
+      [] -> expType
+    | (TVar name, expr)::tl -> substInResult (getType expType (name, expr)) tl
+    | _ -> failwith "Tipo non inferibile (solving)";;
 
 
 
@@ -323,7 +325,5 @@ let rec getConstraints expr typeEnv =
 let rec typeinf expr = 
   let exprConstraints = getConstraints expr newtypenv in
   let unifiedConstrs = solveConstraints (snd exprConstraints) in 
-(* fst exprConstraints,"separatore", snd exprConstraints, "separatore",
-  unifiedConstrs,"separatore" ,solveRemainingConstrs (fst exprConstraints) unifiedConstrs *)
     (if unifiedConstrs = [] then fst exprConstraints else
-       solveRemainingConstrs  (fst exprConstraints) unifiedConstrs);;
+       substInResult  (fst exprConstraints) unifiedConstrs);;
