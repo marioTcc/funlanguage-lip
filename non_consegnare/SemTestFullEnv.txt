@@ -212,6 +212,42 @@ sem(Eq(Snd(Val(Ide "x")),Tail(Val(Ide "y"))))
 sem(Eq(Snd(Val(Ide "x")),Tail(Val(Ide "y"))))
 (bind(bind(emptyenv,Ide "x",Pair(List[],List[])),Ide "y",List[(Int 1);(Int 2)]));;
 
+(* 17 *)
 
+semtry(Cons(Try(Raise(Ide "ecc"),Ide "ecc",Eint 2),Empty)) emptyenv;;
+
+(* 18 *)
+
+semtry(
+  Try(Ifthenelse(
+    Eq(Eint 3,Appl(Fun(Ide "x",Sum(Val(Ide "x"),Eint 1)),Val(Ide "x"))),
+    Cons(Val(Ide "x"),Empty),
+    Raise(Ide "ecc")),Ide "ecc",
+      Cons(Appl(Fun(Ide "y",
+		    Times(Head(Val(Ide "y")),Eint 2)),Val(Ide "y")),Empty)))
+  (bind(bind(emptyenv,Ide "x",Int 3),Ide "y",List[(Int 4);(Int 5)]));;
+
+(* 19 *)
+
+semtry(
+  Ifthenelse(Eq(Head(Tail(
+    Cons(Appl(Fun(Ide "x",Sum(Val(Ide "x"),Eint 2)),Val(Ide "x")),
+	 Cons(Appl(Fun(Ide "y",Diff(Val(Ide "y"),Eint 1)),Val(Ide "y")),
+	      Cons(Appl(Fun(Ide "z",Times(Val(Ide "z"),Eint 2)),Val(Ide "z")),Empty))))), Eint 0),
+	     Appl(Fun(Ide "w",Sum(Times(Val(Ide "w"),Eint 2),Val(Ide "z"))),Val(Ide "w")),
+	     Appl(Fun(Ide "s",Diff(Head(Cons(Appl(Fun(Ide "x",Sum(Val(Ide "x"),Eint 2)),Val(Ide "x")),
+	       Cons(Appl(Fun(Ide "y",Diff(Val(Ide "y"),Eint 1)),Val(Ide "y")),
+		    Cons(Appl(Fun(Ide "z",Times(Val(Ide "z"),Eint 2)),Val(Ide "z")),Empty)))),Eint 1)),
+		  Val(Ide "s"))))
+  
+  (bind(
+    bind(
+      bind(
+	bind(
+	  bind(emptyenv,Ide "x",Int 1),
+	  Ide "y",Int 2),
+	Ide "z",Int 5),
+      Ide "w",Int 6),
+    Ide "s",Int 7));;
 
 
